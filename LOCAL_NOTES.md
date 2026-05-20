@@ -67,7 +67,36 @@
 
 ## T3: GitHub OAuth for local dev
 
-*(to be filled in during T3)*
+**Date:** 2026-05-20
+
+### OAuth App Setup
+
+- **App name:** agent-kanban-local (Tim's GitHub account)
+- **Homepage URL:** `http://localhost:5173`
+- **Authorization callback URL:** `http://localhost:5173/api/auth/callback/github`
+- **Device flow:** disabled
+
+### .dev.vars location
+
+`apps/web/.dev.vars` (gitignored) — contains:
+- `GITHUB_CLIENT_ID` — public OAuth app Client ID
+- `GITHUB_CLIENT_SECRET` — OAuth app Client Secret
+- `AUTH_SECRET` — randomly generated 32-byte hex secret for better-auth session signing
+
+**Never commit .dev.vars.**
+
+### Env var names (better-auth config)
+
+Confirmed in `apps/web/server/betterAuth.ts`:
+- `GITHUB_CLIENT_ID` → `env.GITHUB_CLIENT_ID`
+- `GITHUB_CLIENT_SECRET` → `env.GITHUB_CLIENT_SECRET`
+- `AUTH_SECRET` → `env.AUTH_SECRET`
+
+### Verification Result
+
+- `pnpm dev` started at `http://localhost:5173/`; `.dev.vars` loaded (logged "Using secrets defined in .dev.vars")
+- Browser at `http://localhost:5173` → clicked "Start Building" → GitHub OAuth round-trip completed → landed on Machines page authenticated as Tim's GitHub user
+- Avatar visible top-right; API calls succeed (no 401)
 
 ---
 
