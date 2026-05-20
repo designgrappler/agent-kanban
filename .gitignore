@@ -35,6 +35,9 @@ test-results/
 # Claude Code local settings
 .claude/settings.local.json
 
+# Agent OS worktrees
+.worktrees/
+
 # gstack logs
 .gstack/
 

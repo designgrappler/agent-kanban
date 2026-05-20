@@ -1,3 +1,9 @@
 packages:
   - apps/*
   - packages/*
+allowBuilds:
+  esbuild: true
+  lefthook: false
+  msw: false
+  sharp: false
+  workerd: true

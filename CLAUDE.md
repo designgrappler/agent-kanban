@@ -78,3 +78,49 @@ After every significant code change, follow this sequence:
 - Unit/integration tests: `*.test.ts` — direct import of modules, real D1 via Miniflare (no mocks)
 - E2E tests: `*.spec.ts` — Playwright browser tests
 - Test data setup: Miniflare D1 with migrations from `apps/web/migrations/`, seed helpers in test files
+
+---
+
+## Agent OS Configuration
+
+This repo uses the Agent OS orchestration system. Read `AGENTIC.md` at the start of every session before taking any action.
+
+### Team Architecture
+
+| Role | Agent | Scope |
+|---|---|---|
+| **Tim** | Owner | Vision & Approval |
+| **Peaches** | Lead Architect | Plans, Red Flag Analysis, Handoff Bridges — zero code |
+| **Skylar** | Specialist | Skills, agents, config layer, and (this sprint) agent-kanban code |
+| **Bandit** | QA | Read-only quality gate — no code writes |
+
+Agents are defined in `.claude/agents/`. Invoke via `@peaches`, `@bandit`, `@skylar`.
+
+### Tech Stack (Agent OS view)
+
+- **Package Manager:** pnpm
+- **Dev command:** `pnpm dev` (Vite + Wrangler dev server)
+- **Build command:** `pnpm build`
+- **Runtime:** Cloudflare Workers (Hono API) + React SPA (Vite) + D1 (SQLite)
+- **Local emulation:** Wrangler (`wrangler dev`) — local D1 at `.wrangler/state/v3/d1/`
+
+### Initialization Loop (Every Session)
+
+Before any work, read:
+1. `AGENTIC.md` — Static DNA (tech stack, protocols, hard constraints)
+2. `docs/context/plan.md` — Current sprint objective
+3. `docs/context/tracks.md` — Active tracks and their status
+
+### Execution Protocol
+
+No execution without a Handoff Bridge. All work must flow through:
+
+```
+Tim → Peaches (plan + Bridge) → Skylar (execute) → Bandit (gate)
+```
+
+### Stability Rules
+
+- **Circuit Breaker:** 3 consecutive failures with same root cause → STOP. Call Peaches for Red Flag Analysis.
+- **Git Hygiene:** No commits unless Tim directs.
+- **Branch naming:** `track/N-short-description`
