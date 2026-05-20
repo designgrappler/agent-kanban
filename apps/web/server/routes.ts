@@ -55,10 +55,9 @@ import {
   updateMachine,
   upsertMachine,
 } from "./machineRepo";
-import { createMailbox, deleteMailbox, getEmail, getInbox } from "./mailsService";
+import { getEmail, getInbox } from "./mailsService";
 import { createMessage, listMessages } from "./messageRepo";
 import { metricsMiddleware } from "./metrics";
-import { getMachineMetrics } from "./metricsRepo";
 import { createRepository, deleteRepository, getRepository, listRepositories } from "./repositoryRepo";
 import { createSSEResponse } from "./sse";
 import { getSystemStats } from "./statsRepo";
@@ -606,31 +605,22 @@ api.post("/api/agents", async (c) => {
   const prepared = await prepareAgent(c.env.DB, ownerId, body as CreateAgentInput, identity);
 
   // External service — create mailbox (skip if MAILS_ADMIN_TOKEN not configured)
-  const mailboxToken = c.env.MAILS_ADMIN_TOKEN && !existingUsername ? await createMailbox(c.env.MAILS_ADMIN_TOKEN, email) : undefined;
+  const mailboxToken: string | undefined = undefined;
 
+  // Single atomic insert with all fields
+  const agent = await upsertLatestAgent(c.env.DB, prepared, {
+    mailboxToken,
+    gpgSubkeyId: latestIdentity ? undefined : identity.id.toUpperCase(),
+  });
+
+  // GitHub sync — best-effort, skip if not connected
   try {
-    // Single atomic insert with all fields
-    const agent = await upsertLatestAgent(c.env.DB, prepared, {
-      mailboxToken,
-      gpgSubkeyId: latestIdentity ? undefined : identity.id.toUpperCase(),
-    });
-
-    // GitHub sync — best-effort, skip if not connected
-    try {
-      await syncToGithub(c.env, ownerId, email);
-    } catch (err: unknown) {
-      logger.warn(`github sync failed for agent ${agent.id}: ${err instanceof Error ? err.message : String(err)}`);
-    }
-
-    return c.json(agent, 201);
-  } catch (err) {
-    if (!existingUsername) {
-      await deleteMailbox(c.env.MAILS_ADMIN_TOKEN, email).catch((cleanupErr: unknown) => {
-        logger.warn(`mailbox cleanup failed for ${email}: ${cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr)}`);
-      });
-    }
-    throw err;
+    await syncToGithub(c.env, ownerId, email);
+  } catch (err: unknown) {
+    logger.warn(`github sync failed for agent ${agent.id}: ${err instanceof Error ? err.message : String(err)}`);
   }
+
+  return c.json(agent, 201);
 });
 
 api.patch("/api/agents/:id", async (c) => {
@@ -666,9 +656,6 @@ api.delete("/api/agents/:id", async (c) => {
   const email = agentEmail(agent.username);
   await deleteAgent(c.env.DB, agent.id);
   const remaining = await c.env.DB.prepare("SELECT 1 FROM agents WHERE username = ? LIMIT 1").bind(agent.username).first();
-  if (c.env.MAILS_ADMIN_TOKEN && !remaining) {
-    await deleteMailbox(c.env.MAILS_ADMIN_TOKEN, email);
-  }
 
   // Remove email from GitHub (best-effort)
   const token = await getGithubToken(c.env.DB, c.get("ownerId"));
@@ -952,14 +939,8 @@ api.get("/api/tasks/:id/messages", async (c) => {
 
 // ─── WebSocket Relay ───
 
-api.get("/api/tunnel/ws", async (c) => {
-  const ownerId = c.get("ownerId");
-  const id = c.env.TUNNEL_RELAY.idFromName(ownerId);
-  const stub = c.env.TUNNEL_RELAY.get(id);
-  const url = new URL(c.req.url);
-  url.pathname = "/ws";
-  url.searchParams.set("ownerId", ownerId);
-  return stub.fetch(new Request(url.toString(), c.req.raw));
+api.get("/api/tunnel/ws", (c) => {
+  return c.json({ error: "WebSocket tunnel not available in local mode" }, 501);
 });
 
 // ─── SSE Stream ───
@@ -1051,7 +1032,7 @@ api.get("/api/admin/stats", async (c) => {
 api.get("/api/admin/machines", async (c) => {
   requireAdmin(c);
   const machines = await listAllMachines(c.env.DB);
-  const metrics = await getMachineMetrics(c.env);
+  const metrics = new Map();
   return c.json(machines.map((m) => ({ ...m, metrics: metrics.get(m.id) ?? null })));
 });
 

@@ -1,5 +1,3 @@
-export { TunnelRelay } from "../server/tunnelRelay";
-
 import { createLogger } from "../server/logger";
 import { detectStaleMachines } from "../server/machineRepo";
 import { api } from "../server/routes";
