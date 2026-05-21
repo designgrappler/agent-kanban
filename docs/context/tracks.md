@@ -85,6 +85,12 @@ Otherwise, sequential execution T5 → T6 → T7 → T8 is fine.
 
 ## Backlog (deferred)
 
+- **T12 — Frontend: edit icon in TaskDetail read-only view**
+  - **Status:** DONE — Bandit PASS 2026-05-21
+  - **Branch:** `track/12-task-detail-edit-icon`
+  - **Goal:** Add `onEdit` prop to `TaskDetail`, show Pencil icon button in header for `todo` tasks, wire to existing `handleEditTask` in `BoardPage`.
+  - **Files changed:** `apps/web/src/components/TaskDetail.tsx`, `apps/web/src/routes/BoardPage.tsx`
+
 - **CLI daemon end-to-end:** Run `ak start` against the local board; register Skylar/Bandit/Peaches as board agents; have them update task status via `ak`. Deferred from Sprint 4.
 - **AI-assisted planning prompt:** A board-level "kick off" action that sends current `todo` tasks to an agent for planning/ordering and then locks them. Deferred — Sprint 5 lays the foundation.
 - **P2 — Domain Judgment → Capabilities rename:** Standardize section heading in `claude/agents/frontend.md`, `backend.md`, `fullstack.md`, `database.md`. Non-blocking.
@@ -106,4 +112,4 @@ Known gaps carried to Sprint 5: user session cannot create tasks; UI is fully re
 
 ---
 
-*Last updated: 2026-05-20 (T5 → DONE Bandit PASS; T8 → DONE Bandit PASS; T6 → DONE Bandit PASS; T7 → DONE Bandit PASS 2026-05-20)*
+*Last updated: 2026-05-21 (T12 → DONE Bandit PASS; T5 → DONE Bandit PASS; T8 → DONE Bandit PASS; T6 → DONE Bandit PASS; T7 → DONE Bandit PASS 2026-05-20)*
