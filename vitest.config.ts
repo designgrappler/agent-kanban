@@ -27,6 +27,7 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     include: ["**/*.test.{ts,tsx}"],
+    exclude: [".worktrees/**", "**/node_modules/**"],
     coverage: {
       provider: "v8",
       include: ["apps/web/server/**/*.ts", "packages/shared/src/**/*.ts", "packages/cli/src/**/*.ts"],
