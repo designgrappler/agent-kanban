@@ -805,18 +805,16 @@ api.patch("/api/tasks/:id", async (c) => {
     body.scheduled_at = normalized;
   }
 
-  // Workers can only update tasks they created
-  if (c.get("identityType") === "agent:worker") {
-    const existing = await c.env.DB.prepare("SELECT created_by FROM tasks WHERE id = ?").bind(c.req.param("id")).first<{ created_by: string }>();
+  const identityType = c.get("identityType");
+  if (identityType === "agent:worker" || identityType === "user") {
+    const existing = await c.env.DB.prepare("SELECT created_by, status FROM tasks WHERE id = ?")
+      .bind(c.req.param("id"))
+      .first<{ created_by: string; status: string }>();
     if (!existing) throw new HTTPException(404, { message: "Task not found" });
-    if (existing.created_by !== c.get("agentId")) throw new HTTPException(403, { message: "Workers can only update tasks they created" });
-  }
-
-  // Users can only update tasks that are still in todo status
-  if (c.get("identityType") === "user") {
-    const existing = await c.env.DB.prepare("SELECT status FROM tasks WHERE id = ?").bind(c.req.param("id")).first<{ status: string }>();
-    if (!existing) throw new HTTPException(404, { message: "Task not found" });
-    if (existing.status !== "todo") throw new HTTPException(403, { message: "Users can only update tasks in todo status" });
+    if (identityType === "agent:worker" && existing.created_by !== c.get("agentId"))
+      throw new HTTPException(403, { message: "Workers can only update tasks they created" });
+    if (identityType === "user" && existing.status !== "todo")
+      throw new HTTPException(403, { message: "Users can only update tasks in todo status" });
   }
 
   const task = await updateTask(c.env.DB, c.req.param("id"), body);
@@ -825,18 +823,16 @@ api.patch("/api/tasks/:id", async (c) => {
 });
 
 api.delete("/api/tasks/:id", async (c) => {
-  // Workers can only delete tasks they created
-  if (c.get("identityType") === "agent:worker") {
-    const existing = await c.env.DB.prepare("SELECT created_by FROM tasks WHERE id = ?").bind(c.req.param("id")).first<{ created_by: string }>();
+  const deleteIdentityType = c.get("identityType");
+  if (deleteIdentityType === "agent:worker" || deleteIdentityType === "user") {
+    const existing = await c.env.DB.prepare("SELECT created_by, status FROM tasks WHERE id = ?")
+      .bind(c.req.param("id"))
+      .first<{ created_by: string; status: string }>();
     if (!existing) throw new HTTPException(404, { message: "Task not found" });
-    if (existing.created_by !== c.get("agentId")) throw new HTTPException(403, { message: "Workers can only delete tasks they created" });
-  }
-
-  // Users can only delete tasks that are still in todo status
-  if (c.get("identityType") === "user") {
-    const existing = await c.env.DB.prepare("SELECT status FROM tasks WHERE id = ?").bind(c.req.param("id")).first<{ status: string }>();
-    if (!existing) throw new HTTPException(404, { message: "Task not found" });
-    if (existing.status !== "todo") throw new HTTPException(403, { message: "Users can only delete tasks in todo status" });
+    if (deleteIdentityType === "agent:worker" && existing.created_by !== c.get("agentId"))
+      throw new HTTPException(403, { message: "Workers can only delete tasks they created" });
+    if (deleteIdentityType === "user" && existing.status !== "todo")
+      throw new HTTPException(403, { message: "Users can only delete tasks in todo status" });
   }
 
   const deleted = await deleteTask(c.env.DB, c.req.param("id"));
