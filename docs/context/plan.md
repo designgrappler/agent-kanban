@@ -18,7 +18,7 @@
 | T12 | Frontend: edit icon in TaskDetail for todo tasks | DONE — Bandit PASS |
 | T13 | Backend: seed `ready-for-planning` label on board creation | DONE — Bandit PASS |
 | T14 | Agent OS: AI-assisted planning workflow | PENDING — blocked on T15 (plan_url schema sign-off) |
-| T15 | Backend: `plan_url` column on tasks | PENDING — awaiting Tim schema sign-off |
+| T15 | Backend: `plan_url` column on tasks | IN PROGRESS — Bridge issued 2026-05-21 |
 
 ---
 
@@ -30,14 +30,14 @@
 - [x] T12: Pencil icon renders in `TaskDetail` header when `task.status === "todo"` and `onEdit` prop is provided; wired from `BoardPage`
 - [x] T13: `ready-for-planning` label (color `#6366F1`) seeded automatically on every new board creation
 - [ ] T14: Agent OS planning workflow documented in skill config; deferred until T15 lands
-- [ ] T15: `plan_url TEXT` nullable column on `tasks`; Tim schema sign-off required
+- [ ] T15: `plan_url TEXT` nullable column on `tasks`; migration `0024_task_plan_url.sql` applied; wired through `taskRepo.ts`, `routes.ts`, `shared/types.ts`, `TaskDetail.tsx`; CLI `output.ts` and `describe.ts` display it — Tim schema sign-off: RECEIVED 2026-05-21
 - [ ] `pnpm build` exits zero
 - [ ] `pnpm tsc --noEmit` exits zero
 - [ ] Bandit QA: PASS
 
 ---
 
-*Last updated: 2026-05-21 (T9/T11/T12/T13 marked DONE; T10 unblocked; T10 Bridge issued 2026-05-21)*
+*Last updated: 2026-05-21 (T9/T11/T12/T13 marked DONE; T10 unblocked; T10 Bridge issued 2026-05-21; T15 Bridge issued 2026-05-21)*
 
 ---
 
@@ -336,6 +336,194 @@ No other change to `api.ts` — the `request()` function passes the full input o
 8. Invoke Bandit for QA gate
 
 **Next Step:** Skylar — create the worktree, then work through the three files in order: `NewBoardPage.tsx` → `useBoard.ts` → `api.ts`. Run the verification checklist. Invoke Bandit.
+
+---
+
+### HANDOFF BRIDGE — T15
+**Topic:** Backend + Frontend: `plan_url` column on tasks
+**Track:** T15
+**Specialist:** Skylar
+**Static DNA Check:** Aligned — D1/SQLite migration, Hono API repo layer, `packages/shared` types, React TaskDetail component. Mirrors the `pr_url` pattern exactly. Schema sign-off on record (Tim, 2026-05-21).
+**Dynamic DNA State:**
+- **Product Context:** Agents need to attach a planning document URL to a task (analogous to `pr_url` for PRs). The field is agent-settable via `PATCH /api/tasks/:id`; the UI displays it read-only in `TaskDetail` alongside the existing PR field. No edit affordance in the browser.
+- **Current Plan:** Sprint 6 → T15 in `docs/context/plan.md`
+- **Execution Files:**
+  - `apps/web/migrations/0024_task_plan_url.sql` — NEW migration
+  - `packages/shared/src/types.ts` — add `plan_url` to `Task` interface
+  - `apps/web/server/taskRepo.ts` — four sites: INSERT, `updateTask` type + allowedFields, `createTask` return object, `reviewTask` return object
+  - `apps/web/server/routes.ts` — no body-parsing change needed (PATCH body is passed through directly to `updateTask`; `plan_url` will be accepted automatically once `allowedFields` includes it)
+  - `apps/web/src/components/TaskDetail.tsx` — add `plan_url` display Field alongside the PR Field
+  - `packages/cli/src/commands/describe.ts` — add `plan_url` display line after `pr_url` line
+  - `packages/cli/src/output.ts` — add `plan_url` to `formatTaskList`, `formatTaskListWide`, and the detailed task block
+  - `packages/cli/src/apply/parser.ts` — add `planUrl: "plan_url"` to `CAMEL_TO_SNAKE` map
+
+**Migration Safety:** Reversible — nullable column addition; `DROP COLUMN` to roll back. Tim schema sign-off: RECEIVED 2026-05-21
+**Security Review:** SCHEMA — Tim acceptance: YES (2026-05-21)
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/track-15 track/15-task-plan-url`
+
+---
+
+#### Exact implementation steps for Skylar
+
+**Step 1 — Worktree setup**
+```bash
+bash scripts/worktree-add.sh .worktrees/track-15 track/15-task-plan-url
+cd .worktrees/track-15
+```
+
+---
+
+**Step 2 — Migration file**
+
+Create `apps/web/migrations/0024_task_plan_url.sql` with exactly:
+```sql
+ALTER TABLE tasks ADD COLUMN plan_url TEXT;
+```
+
+---
+
+**Step 3 — `packages/shared/src/types.ts`**
+
+On the `Task` interface, add `plan_url` immediately after `pr_url` (line 45):
+```ts
+plan_url: string | null;
+```
+
+---
+
+**Step 4 — `apps/web/server/taskRepo.ts`**
+
+Four targeted edits:
+
+1. **`createTask` INSERT statement** (line ~103) — the INSERT column list currently reads:
+   ```sql
+   INSERT INTO tasks (id, board_id, seq, status, title, description, repository_id, labels, created_by, assigned_to, result, pr_url, input, created_from, scheduled_at, position, created_at, updated_at)
+   VALUES (?, ?, ?, 'todo', ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?)
+   ```
+   Change to:
+   ```sql
+   INSERT INTO tasks (id, board_id, seq, status, title, description, repository_id, labels, created_by, assigned_to, result, pr_url, plan_url, input, created_from, scheduled_at, position, created_at, updated_at)
+   VALUES (?, ?, ?, 'todo', ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?, ?, ?, ?)
+   ```
+
+2. **`createTask` return object** (line ~153) — after `pr_url: null,` add:
+   ```ts
+   plan_url: null,
+   ```
+
+3. **`updateTask` type signature** (line ~270) — the `Partial<Pick<Task, ...>>` currently lists `"pr_url"`. Add `"plan_url"`:
+   ```ts
+   updates: Partial<Pick<Task, "title" | "description" | "repository_id" | "labels" | "pr_url" | "plan_url" | "input" | "position" | "scheduled_at">> & {
+   ```
+
+4. **`updateTask` allowedFields** (line ~293) — the `allowedFields` array currently reads:
+   ```ts
+   const allowedFields = ["title", "description", "repository_id", "labels", "pr_url", "input", "position", "scheduled_at"] as const;
+   ```
+   Add `"plan_url"` after `"pr_url"`:
+   ```ts
+   const allowedFields = ["title", "description", "repository_id", "labels", "pr_url", "plan_url", "input", "position", "scheduled_at"] as const;
+   ```
+
+   Note: `reviewTask` does not need a change — it only sets `pr_url` on `in_review` transition and its return object uses spread (`{ ...task, ... }`), which will include `plan_url` from the fetched row automatically once the column exists.
+
+---
+
+**Step 5 — `apps/web/server/routes.ts`**
+
+No change required. The `PATCH /api/tasks/:id` handler passes the raw request body directly to `updateTask`. Once `allowedFields` in `taskRepo.ts` includes `"plan_url"`, agents can set it via:
+```bash
+curl -X PATCH .../api/tasks/<id> -d '{"plan_url": "https://..."}'
+```
+
+---
+
+**Step 6 — `apps/web/src/components/TaskDetail.tsx`**
+
+Add a `Plan` field display alongside the existing `PR` field. In the `detailsContent` grid (around line 178), the current PR field block is:
+```tsx
+<Field
+  label="PR"
+  value={
+    task.pr_url ? (
+      <a href={task.pr_url} target="_blank" rel="noopener noreferrer" className="font-mono text-[13px] text-accent hover:underline">
+        {formatPrLabel(task.pr_url)}
+      </a>
+    ) : (
+      <span className="text-content-tertiary">—</span>
+    )
+  }
+/>
+```
+
+Add immediately after it:
+```tsx
+<Field
+  label="Plan"
+  value={
+    task.plan_url ? (
+      <a href={task.plan_url} target="_blank" rel="noopener noreferrer" className="font-mono text-[13px] text-accent hover:underline">
+        Plan
+      </a>
+    ) : (
+      <span className="text-content-tertiary">—</span>
+    )
+  }
+/>
+```
+
+No edit affordance. Display only. No helper function needed (unlike `formatPrLabel`, plans don't have a standard URL pattern to parse a short label from — use the literal text "Plan" as the link label).
+
+---
+
+**Step 7 — `packages/cli/src/commands/describe.ts`**
+
+After line 24 (`if (task.pr_url) lines.push(...)`), add:
+```ts
+if (task.plan_url) lines.push(`${pad("Plan")} ${task.plan_url}`);
+```
+
+---
+
+**Step 8 — `packages/cli/src/output.ts`**
+
+Three edits — mirror the `pr_url` pattern at each site:
+
+1. `formatTaskList` (around line 58): after `const pr = t.pr_url ? \`PR: ${t.pr_url}\` : "";`, add:
+   ```ts
+   const plan = t.plan_url ? `Plan: ${t.plan_url}` : "";
+   ```
+   And append ` ${plan}` to the return template string.
+
+2. `formatTaskListWide` (around line 75): same pattern — add `plan` variable and append to template.
+
+3. Detailed task block (around line 182): after `if (task.pr_url) lines.push(\`  PR:          ${task.pr_url}\`);`, add:
+   ```ts
+   if (task.plan_url) lines.push(`  Plan:        ${task.plan_url}`);
+   ```
+
+---
+
+**Step 9 — `packages/cli/src/apply/parser.ts`**
+
+In the `CAMEL_TO_SNAKE` map (line 18), after `prUrl: "pr_url",` add:
+```ts
+planUrl: "plan_url",
+```
+
+This allows `ak apply` YAML/JSON files to use `planUrl` in the spec and have it map to `plan_url` on the wire.
+
+---
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — must all exit zero
+2. Apply migration: `npx wrangler d1 execute agent-kanban --local --file=apps/web/migrations/0024_task_plan_url.sql`
+3. Set `plan_url` on a task via PATCH and confirm it round-trips through `GET /api/tasks/:id`
+4. Open TaskDetail in the browser — confirm "Plan" field appears (shows "—" when null, link when set)
+5. Run `ak get task <id>` — confirm `plan_url` appears in describe output
+6. Invoke Bandit for QA gate
+
+**Next Step:** Skylar — create the worktree, then work through the eight files in order: migration → shared types → taskRepo → TaskDetail → describe → output → parser. Routes needs no change. Run the verification checklist. Invoke Bandit.
 
 ---
 

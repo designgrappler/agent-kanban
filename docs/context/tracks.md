@@ -87,9 +87,29 @@
 
 ---
 
-### Track 14 — Agent OS: AI-assisted planning workflow
+### Track 15 — Backend + Frontend: `plan_url` column on tasks
 
-- **Status:** PENDING — blocked on Tim's decision on plan_url column (Q5)
+- **Status:** IN PROGRESS — Bridge issued 2026-05-21
+- **Specialist:** Skylar
+- **Branch:** `track/15-task-plan-url`
+- **Goal:** Add `plan_url TEXT` nullable column to `tasks` table. Mirror `pr_url` pattern throughout: migration, shared types, taskRepo (INSERT + updateTask allowedFields), TaskDetail display, CLI output and describe, apply parser CAMEL_TO_SNAKE map.
+- **Primary files:**
+  - `apps/web/migrations/0024_task_plan_url.sql` — NEW: `ALTER TABLE tasks ADD COLUMN plan_url TEXT;`
+  - `packages/shared/src/types.ts` — add `plan_url: string | null` to `Task` interface (after `pr_url`)
+  - `apps/web/server/taskRepo.ts` — add `plan_url` to INSERT column list (NULL default); add to `updateTask` Pick type and `allowedFields` array
+  - `apps/web/src/components/TaskDetail.tsx` — add read-only "Plan" Field after "PR" Field in the details grid
+  - `packages/cli/src/commands/describe.ts` — add `plan_url` display line after `pr_url` line
+  - `packages/cli/src/output.ts` — add `plan_url` to `formatTaskList`, `formatTaskListWide`, and detailed task block
+  - `packages/cli/src/apply/parser.ts` — add `planUrl: "plan_url"` to `CAMEL_TO_SNAKE` map
+- **Migration Safety:** Reversible — nullable column addition; Tim schema sign-off: YES (2026-05-21)
+- **Security Review:** SCHEMA — Tim acceptance: YES (2026-05-21)
+- **Depends on:** (unblocked — independent of all other active tracks)
+
+---
+
+
+
+- **Status:** PENDING — blocked on T15 landing (plan_url column must exist before workflow is meaningful)
 - **Specialist:** Skylar (Agent OS config only — no `apps/web/` or `packages/` source changes)
 - **Branch:** `track/14-planning-workflow`
 - **Goal:** Define AI-assisted planning behavior in Agent OS skill config. Silent task recognition, `ready-for-planning` label trigger with ~1-minute deferred prompt, explicit planning request path.
@@ -107,7 +127,7 @@
 **MANDATORY: Always use `scripts/worktree-add.sh`, never raw `git worktree add`.**
 See AGENTIC.md §4 for the full explanation. pnpm's hoisted `node_modules` are not present in raw worktrees — the script symlinks them.
 
-T10 is complete — DONE. T14 is blocked until Tim signs off on the plan_url column (T15 schema decision).
+T10 is complete — DONE. T15 Bridge issued 2026-05-21 (Tim schema sign-off received). T14 unblocked once T15 lands.
 
 ---
 
@@ -130,7 +150,7 @@ T10 is complete — DONE. T14 is blocked until Tim signs off on the plan_url col
 ## Open Questions (blocking)
 
 1. **T11 — Orphaned cancelled tasks:** Once the Cancelled column is removed, tasks cancelled by agents are invisible in the board UI. Is that acceptable, or should we add a "tombstone" view (e.g., TaskDetail accessible via direct link)? The current TaskDetail panel already shows task status — so cancelled tasks can be viewed if you know their ID.
-2. **T14/T15 — Plan document link:** Tim selected Option A (`plan_url TEXT` column on `tasks` table). Schema sign-off still **required** before T15 Bridge issuance.
+2. **T14/T15 — Plan document link:** Tim selected Option A (`plan_url TEXT` column on `tasks` table). Schema sign-off **RECEIVED 2026-05-21**. T15 Bridge issued. T14 unblocked once T15 merges.
 
 **Resolved (no longer blocking):**
 - T9 schema sign-off: APPROVED — Tim confirmed `ALTER TABLE boards ADD COLUMN theme TEXT` (2026-05-20)
@@ -173,4 +193,4 @@ T10 is complete — DONE. T14 is blocked until Tim signs off on the plan_url col
 
 ---
 
-*Last updated: 2026-05-21 (T9/T10/T11/T12/T13/T16 DONE — Bandit PASS all; T14/T15 still pending Tim's plan_url schema sign-off)*
+*Last updated: 2026-05-21 (T9/T10/T11/T12/T13/T16 DONE — Bandit PASS all; T15 Bridge issued 2026-05-21; T14 unblocked once T15 merges)*
