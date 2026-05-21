@@ -155,6 +155,8 @@ export async function createTask(
     input: input.input || null,
     created_from: input.created_from || null,
     scheduled_at: input.scheduled_at || null,
+    sprint_id: null,
+    track_number: null,
     position,
     created_at: now,
     updated_at: now,
