@@ -21,12 +21,13 @@ In QA mode, flag any code that doesn't match DESIGN.md.
 - Agent skill: skills/agent-kanban/ — installed via `npx skills add` to target repos
 
 ## UI Principles
-- **Read-only board** — the web UI is for observation and review, not task management
-- **No task creation UI** — tasks are created exclusively by agents via CLI/API
-- **No status transition buttons** — no claim/cancel/release/assign in the UI
+- **Human-editable backlog** — tasks in `todo` status can be created, edited, and deleted from the browser by humans (product backlog management)
+- **Locked once claimed** — tasks in any other status (`in_progress`, `in_review`, `done`, `cancelled`) are read-only in the UI; no edit/delete affordances are shown
+- **No status transition buttons** — no claim/cancel/release/assign in the UI; agents drive their own lifecycle via CLI/API
 - **No drag-and-drop** — card ordering is managed by agents
+- **No repo picker** — repository assignment is automatic via the board's `default_repository_id`
 - **Only two review actions in UI**: reject (send back to agent) and complete (accept) — can be performed by humans or lead agents via API
-- Board switcher and task detail (logs, PR, chat) are the only navigation interactions
+- Board switcher and task detail (logs, PR, chat) are the only navigation interactions outside of backlog editing
 
 ## Patterns
 - Data access: thin repo layer (taskRepo.ts, boardRepo.ts, agentRepo.ts, messageRepo.ts) — no raw SQL in route handlers
