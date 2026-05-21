@@ -4,13 +4,13 @@
 
 > **Working directory for all tracks:** `/Users/I826932/Developer/agent-kanban/`
 > **Specialist:** Skylar
-> **Worktree protocol:** T9, T11, T12, T13 can all run in parallel (independent). T10 depends on T9. T14 is blocked on Tim decisions. Use worktrees per AGENTIC.md §4 when running 2+ tracks simultaneously.
+> **Worktree protocol:** T10 is now unblocked (T9 merged). T14 is blocked on Tim decisions. Use worktrees per AGENTIC.md §4 when running 2+ tracks simultaneously.
 
 ---
 
 ### Track 9 — Schema + Backend: `theme` column on boards
 
-- **Status:** READY — Tim schema sign-off received (2026-05-20)
+- **Status:** DONE — Bandit PASS
 - **Specialist:** Skylar
 - **Branch:** `track/9-board-theme-schema`
 - **Goal:** Add `theme TEXT` nullable column to `boards` table. Wire through `boardRepo.createBoard`, `boardRepo.updateBoard`, `routes.ts` (POST and PATCH /api/boards), and `shared/types.ts` (`Board`, `CreateBoardInput`).
@@ -27,9 +27,9 @@
 
 ### Track 10 — Frontend: update create board form
 
-- **Status:** BLOCKED on T9
+- **Status:** READY — unblocked (T9 merged 2026-05-21)
 - **Specialist:** Skylar
-- **Branch:** `track/10-board-form-update` (builds on T9)
+- **Branch:** `track/10-board-form-update`
 - **Goal:** Remove board type UI selector from `NewBoardPage.tsx`. Hardcode `type: "dev"` in the create payload. Add Theme textarea with placeholder "Describe the purpose of this sprint."
 - **Primary files:**
   - `apps/web/src/routes/NewBoardPage.tsx` — remove `boardType` state + type selector UI; add `boardTheme` state + Textarea; update `handleCreateBoard` payload
@@ -41,7 +41,7 @@
 
 ### Track 11 — Frontend: remove Cancelled column from board view
 
-- **Status:** READY — Tim confirmed: remove from DemoBoard.tsx too (2026-05-20)
+- **Status:** DONE — Bandit PASS
 - **Specialist:** Skylar
 - **Branch:** `track/11-remove-cancelled-column`
 - **Goal:** Remove `"cancelled"` from `TASK_STATUSES` in `BoardPage.tsx` and `SharePage.tsx`. Remove `cancelled: Ban` from `KanbanColumn.tsx` COLUMN_ICONS. No backend changes.
@@ -60,7 +60,7 @@
 
 ### Track 12 — Frontend: edit icon in TaskDetail read-only view
 
-- **Status:** READY — unblocked, no open questions
+- **Status:** DONE — Bandit PASS
 - **Specialist:** Skylar
 - **Branch:** `track/12-task-detail-edit-icon`
 - **Goal:** Add optional `onEdit` prop to `TaskDetail`. Render a Pencil icon button in the header when `task.status === "todo" && onEdit`. Wire `onEdit={handleEditTask}` from `BoardPage`.
@@ -107,21 +107,11 @@
 **MANDATORY: Always use `scripts/worktree-add.sh`, never raw `git worktree add`.**
 See AGENTIC.md §4 for the full explanation. pnpm's hoisted `node_modules` are not present in raw worktrees — the script symlinks them.
 
-T9 and T11 can run in parallel (no shared files):
+T10 is the only active unblocked track — create a worktree from main (T9 is merged):
 ```bash
-bash scripts/worktree-add.sh .worktrees/track-9 track/9-board-theme-schema
-bash scripts/worktree-add.sh .worktrees/track-11 track/11-remove-cancelled-column
+bash scripts/worktree-add.sh .worktrees/track-10 track/10-board-form-update
 ```
-T12 and T13 are also independent and can run in parallel with T9/T11:
-```bash
-bash scripts/worktree-add.sh .worktrees/track-12 track/12-task-detail-edit-icon
-bash scripts/worktree-add.sh .worktrees/track-13 track/13-seed-planning-label
-```
-T10 must be created from T9 once T9 is merged (or from the T9 branch if running sequentially):
-```bash
-bash scripts/worktree-add.sh .worktrees/track-10 track/10-board-form-update  # then rebase onto T9
-```
-T14 is blocked until Tim answers Open Question 5 (plan_url column).
+T14 is blocked until Tim signs off on the plan_url column (T15 schema decision).
 
 ---
 
@@ -187,4 +177,4 @@ T14 is blocked until Tim answers Open Question 5 (plan_url column).
 
 ---
 
-*Last updated: 2026-05-20 (T16 DONE — Bandit PASS; worktree script and tsconfig path alias delivered; T16 scoped and Bridge issued by Peaches — worktree infra track; AGENTIC.md §4 updated; worktree commands in tracks.md updated to use worktree-add.sh; T13 DONE — Bandit PASS; Sprint 6 tracks updated by Peaches — Tim's answers applied: T9 READY, T11 READY, T14 wait behavior resolved; Bridges issued for T9/T11/T12/T13; T14 still pending plan_url sign-off)*
+*Last updated: 2026-05-21 (T9/T11/T12/T13/T16 DONE — Bandit PASS all; T10 unblocked — T9 merged to main; T14/T15 still pending Tim's plan_url schema sign-off)*

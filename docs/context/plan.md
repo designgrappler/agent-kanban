@@ -2,7 +2,46 @@
 
 ---
 
-## Current Sprint: Sprint 5 — Human-Editable Backlog
+## Current Sprint: Sprint 6 — Board Polish
+
+**Objective:** Polish the board creation and view experience. Add theme support to boards, clean up the Kanban column set, improve task editing ergonomics, and seed planning labels automatically.
+
+---
+
+## Tracks
+
+| Track | Goal | Status |
+|---|---|---|
+| T9 | Schema + Backend: `theme` column on boards | DONE — Bandit PASS |
+| T10 | Frontend: update create board form (add Theme field, remove type selector) | READY — unblocked (T9 merged 2026-05-21) |
+| T11 | Frontend: remove Cancelled column from board view | DONE — Bandit PASS |
+| T12 | Frontend: edit icon in TaskDetail for todo tasks | DONE — Bandit PASS |
+| T13 | Backend: seed `ready-for-planning` label on board creation | DONE — Bandit PASS |
+| T14 | Agent OS: AI-assisted planning workflow | PENDING — blocked on T15 (plan_url schema sign-off) |
+| T15 | Backend: `plan_url` column on tasks | PENDING — awaiting Tim schema sign-off |
+
+---
+
+## Definition of Done (Sprint 6)
+
+- [x] T9: `theme TEXT` nullable column on `boards`; wired through `boardRepo`, `routes.ts`, and `shared/types.ts`; migration `0023_board_theme.sql` applied
+- [ ] T10: Create board form removes type selector, hardcodes `type: "dev"`, adds Theme textarea; `POST /api/boards` with `theme` succeeds
+- [x] T11: `"cancelled"` removed from `TASK_STATUSES` in `BoardPage.tsx`, `SharePage.tsx`, and `KanbanColumn.tsx`; `DemoBoard.tsx` updated
+- [x] T12: Pencil icon renders in `TaskDetail` header when `task.status === "todo"` and `onEdit` prop is provided; wired from `BoardPage`
+- [x] T13: `ready-for-planning` label (color `#6366F1`) seeded automatically on every new board creation
+- [ ] T14: Agent OS planning workflow documented in skill config; deferred until T15 lands
+- [ ] T15: `plan_url TEXT` nullable column on `tasks`; Tim schema sign-off required
+- [ ] `pnpm build` exits zero
+- [ ] `pnpm tsc --noEmit` exits zero
+- [ ] Bandit QA: PASS
+
+---
+
+*Last updated: 2026-05-21 (T9/T11/T12/T13 marked DONE; T10 unblocked)*
+
+---
+
+## Archive: Sprint 5 — Human-Editable Backlog
 
 **Objective:** Allow Tim to manage a product backlog directly from the browser UI. Tim can create, edit, and delete tasks in the `todo` column (the backlog). Once tasks are kicked off (agents are working them — any status past `todo`), Tim cannot unilaterally edit them. The model is: backlog (human-editable) → kick off → locked execution. Agents continue to own the execution layer exclusively.
 
@@ -168,7 +207,7 @@ The `createTask` handler also requires `assigned_to` (line 768 in `routes.ts`). 
 
 ---
 
-*Last updated: 2026-05-20 (T5 DONE Bandit PASS; T8 DONE Bandit PASS; T6 DONE Bandit PASS; T7 DONE Bandit PASS 2026-05-20)*
+*Last updated: 2026-05-21 (Sprint 6 section added; T9/T11/T12/T13 marked DONE; T10 unblocked; T5/T6/T7/T8 Sprint 5 DONE Bandit PASS)*
 
 ---
 
