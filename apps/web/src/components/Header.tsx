@@ -1,6 +1,7 @@
 import { Settings, Tags } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { useBoards } from "../hooks/useBoard";
 import { api } from "../lib/api";
 import { clearAuthToken, signOut, useSession } from "../lib/auth-client";
@@ -72,10 +73,14 @@ export function Header() {
     navigate(`/boards/${id}`);
   }
 
-  async function handleBoardCreate(name: string, type: "dev" | "ops") {
-    const created = await api.boards.create({ name, type });
-    refreshBoards();
-    if (created?.id) navigate(`/boards/${created.id}`);
+  async function handleBoardCreate(name: string, theme?: string) {
+    try {
+      const created = await api.boards.create({ name, type: "dev", theme });
+      refreshBoards();
+      if (created?.id) navigate(`/boards/${created.id}`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to create board");
+    }
   }
 
   async function handleSignOut() {

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
 
 interface Board {
   id: string;
@@ -13,22 +14,22 @@ interface BoardSwitcherProps {
   boards: Board[];
   activeBoardId: string | null;
   onSelect: (boardId: string) => void;
-  onCreate: (name: string, type: "dev" | "ops") => void;
+  onCreate: (name: string, theme?: string) => void;
   onClose: () => void;
 }
 
 export function BoardSwitcher({ boards, activeBoardId, onSelect, onCreate, onClose }: BoardSwitcherProps) {
   const [newName, setNewName] = useState("");
-  const [newType, setNewType] = useState<"dev" | "ops">("dev");
+  const [newTheme, setNewTheme] = useState("");
   const [creating, setCreating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleCreate() {
     const name = newName.trim();
     if (!name) return;
-    onCreate(name, newType);
+    onCreate(name, newTheme.trim() || undefined);
     setNewName("");
-    setNewType("dev");
+    setNewTheme("");
     setCreating(false);
   }
 
@@ -101,19 +102,13 @@ export function BoardSwitcher({ boards, activeBoardId, onSelect, onCreate, onClo
                   Create
                 </Button>
               </div>
-              <div className="flex gap-1.5">
-                {(["dev", "ops"] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setNewType(t)}
-                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                      newType === t ? "bg-accent text-white" : "bg-surface-tertiary text-content-secondary hover:text-content-primary"
-                    }`}
-                  >
-                    {t === "dev" ? "Dev" : "Ops"}
-                  </button>
-                ))}
-              </div>
+              <Textarea
+                value={newTheme}
+                onChange={(e) => setNewTheme(e.target.value)}
+                placeholder="Describe the purpose of this sprint."
+                rows={3}
+                className="resize-none text-sm"
+              />
             </div>
           ) : (
             <Button variant="ghost" size="sm" onClick={() => setCreating(true)} className="w-full justify-start text-content-tertiary">

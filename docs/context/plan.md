@@ -2,7 +2,231 @@
 
 ---
 
-## Current Sprint: Sprint 6 — Board Polish
+## Current Sprint: Sprint 7 — UI Polish
+
+**Objective:** Ship UI polish across three fronts: (1) commit and track the informal session work that accumulated in the working tree, (2) surface `board.theme` as a subtitle on the board view, (3) restyle `plan_url` as a chip in TaskDetail, and (4) run the first end-to-end daemon smoke test against a live Sprint 7 board.
+
+---
+
+## Tracks
+
+| Track | Goal | Status |
+|---|---|---|
+| T18 | Cleanup: commit informal session work + AGENTIC.md DoD migration | todo |
+| T19 | Frontend: board theme subtitle on BoardPage (Option A — subdued subtitle) | todo |
+| T20 | Frontend: plan_url chip styling in TaskDetail | todo |
+| T22 | CLI: daemon end-to-end smoke test | todo |
+| T23 | Docs: formal Sprint 7 open (plan.md + tracks.md) — Peaches track | done |
+
+**T21 DROPPED** — absorbed into T19 (Option A selected by Tim; no banner/collapsible needed).
+
+---
+
+## Dependency order
+
+```
+T18 → T19 (needs clean tree)
+T18 → T20 (needs clean tree)
+T18 → T22 (smoke test runs after tree is clean)
+T23 — no dependencies (Peaches, done on sprint open)
+```
+
+---
+
+## Definition of Done (Sprint 7)
+
+- [ ] T18: Four dirty files committed (`BoardSwitcher.tsx`, `Header.tsx`, `useBoard.ts`, `BoardSettingsPage.tsx`) plus `AGENTIC.md` DoD checkpoint migration; `api.ts` has `theme?: string | null` on `api.boards.update`; board task `djpjbua8dzi4` created; Bandit PASS
+- [ ] T19: `board.theme` renders as a subdued subtitle beneath board name in `BoardPage.tsx`; conditional on non-null/non-empty; board task `wgs05lo6su3c` created; Bandit PASS
+- [ ] T20: `plan_url` and `pr_url` fields in `TaskDetail.tsx` use consistent chip/badge styling; board task `m87r7tx6go9l` created; Bandit PASS
+- [ ] T22: `ak start` runs against board `eelil1mu`; Skylar/Bandit/Peaches registered as agents; task claim → status transition → `ak get task` all verified; board task `7lqed55p3yxl` created; findings documented
+- [x] T23: `plan.md` + `tracks.md` updated to Sprint 7; board task `od2z7r2ejz3d` created
+- [ ] `pnpm build` exits zero
+- [ ] `pnpm tsc --noEmit` exits zero
+- [ ] Bandit QA: PASS
+
+---
+
+*Last updated: 2026-05-21 (Sprint 7 opened; T18–T23 tracks created; board tasks created on eelil1mu; Handoff Bridges issued for T18/T19/T20/T22)*
+
+---
+
+## Sprint 7 Bridges
+
+### HANDOFF BRIDGE — T18
+**Topic:** Cleanup: commit informal session work (BoardSwitcher, Header, useBoard, BoardSettingsPage, api.ts, AGENTIC.md)
+**Track:** T18
+**Board task:** `djpjbua8dzi4`
+**Specialist:** Skylar
+**Static DNA Check:** Aligned — T18 is a commit-only cleanup track. No schema migration, no auth changes, no new features. The dirty files are theme-related UI work already done informally; committing them properly makes them trackable and unblocks T19/T20/T22.
+**Dynamic DNA State:**
+- **Product Context:** Six files have uncommitted changes from informal session work. They need to land in a clean tracked commit before any Sprint 7 work can branch off.
+- **Current Plan:** Sprint 7 → T18 in `docs/context/plan.md`
+- **Execution Files (all modified, no new files):**
+  - `apps/web/src/components/BoardSwitcher.tsx` — replaced dev/ops type toggle with Theme textarea; updated `onCreate` prop signature to `(name: string, theme?: string)`
+  - `apps/web/src/components/Header.tsx` — updated `handleBoardCreate` to pass `theme`; added `toast.error` catch block; imports `toast` from `sonner`
+  - `apps/web/src/hooks/useBoard.ts` — added `theme?: string | null` to `useUpdateBoard` mutation input type
+  - `apps/web/src/routes/BoardSettingsPage.tsx` — added `theme` field to `BoardSettingsBoard` interface; added `theme` state + input in `BoardDetailsSection`; passes `theme` to `updateBoard.mutateAsync`
+  - `apps/web/src/lib/api.ts` — add `theme?: string | null` and `default_repository_id?: string | null` to `api.boards.update` body type (currently `Record<string, unknown>` pattern — tighten it)
+  - `AGENTIC.md` — added DoD migration checkpoint bullet: "If track includes a migration file: dev server restarted after merge and migration confirmed applied to `.wrangler/state` DB"
+
+**Worktree Setup:** T18 commits directly to the current branch (`track/1-fork-and-clone`) — NO worktree needed. The working tree is already the right place. Do NOT create a separate worktree for this track.
+
+**Verification:**
+1. `git diff HEAD` — confirm only the six files above are changed; no extra files
+2. `pnpm build && pnpm tsc --noEmit && npx vitest run` — all must exit zero
+3. `git add apps/web/src/components/BoardSwitcher.tsx apps/web/src/components/Header.tsx apps/web/src/hooks/useBoard.ts apps/web/src/routes/BoardSettingsPage.tsx apps/web/src/lib/api.ts AGENTIC.md`
+4. `git commit -m "feat(ui): theme field in board create/settings UI; tighten api.boards.update type; AGENTIC.md DoD checkpoint"` (or equivalent)
+5. `git log --oneline -3` — confirm commit is present
+6. Invoke Bandit for QA gate
+
+**Next Step:** Skylar — read the six files in full to confirm you understand the existing changes. Make the one remaining source change in `api.ts` (tighten `boards.update` body type to include `theme?: string | null`). Then stage exactly the six files listed and commit. Do NOT commit `docs/context/plan.md` or `docs/context/tracks.md` — those are Peaches' files and will be committed separately. Run the verification checklist. Invoke Bandit.
+
+---
+
+### HANDOFF BRIDGE — T19
+**Topic:** Frontend: board theme subtitle on BoardPage
+**Track:** T19
+**Board task:** `wgs05lo6su3c`
+**Specialist:** Skylar
+**Static DNA Check:** Aligned — React + Vite + Tailwind frontend. Pure UI, read-only display. No schema, no auth changes. T18 must be committed first. Tim chose Option A: subdued subtitle line beneath the board name, no collapsible banner.
+**Dynamic DNA State:**
+- **Product Context:** `board.theme` already exists as a field (set during board creation or via settings). Boards have it populated — the Sprint 7 board (`eelil1mu`) has `theme: "UI enhancements"`. The board view doesn't display it yet.
+- **Current Plan:** Sprint 7 → T19 in `docs/context/plan.md`
+- **Execution Files:**
+  - `apps/web/src/routes/BoardPage.tsx` — only file to modify
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/track-19 track/19-board-theme-subtitle`
+
+**Exact implementation for Skylar:**
+
+In `BoardPage.tsx`, locate the board header area where the board name is displayed. The board name is currently the primary heading. Immediately after it, add a conditional subtitle:
+
+```tsx
+{board.theme && (
+  <p className="text-sm text-content-tertiary mt-0.5 leading-snug">{board.theme}</p>
+)}
+```
+
+Placement: directly beneath the board name `<h1>` (or equivalent heading element) in the board header. No collapsible, no banner, no icon. Just a subdued single-line paragraph. The exact parent element and class names depend on what you find in `BoardPage.tsx` — read it first, then place the subtitle in the right spot.
+
+**Constraints:**
+- Conditional render only: do not render the subtitle element at all when `board.theme` is null, undefined, or empty string
+- Read-only: no edit affordance
+- Styling must be subdued — `text-content-tertiary` or equivalent muted color; smaller than the board name
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — all must exit zero
+2. `pnpm dev` — navigate to board `eelil1mu` (which has `theme: "UI enhancements"`)
+3. Confirm subtitle "UI enhancements" appears beneath the board name in a muted, smaller style
+4. Create or navigate to a board with no theme — confirm no subtitle renders (no empty line)
+5. Invoke Bandit for QA gate
+
+**Next Step:** Skylar — create the worktree, read `BoardPage.tsx` in full to locate the board name heading, then add the conditional subtitle in the correct location. Run the verification checklist. Invoke Bandit.
+
+---
+
+### HANDOFF BRIDGE — T20
+**Topic:** Frontend: plan_url chip styling in TaskDetail
+**Track:** T20
+**Board task:** `m87r7tx6go9l`
+**Specialist:** Skylar
+**Static DNA Check:** Aligned — React + Tailwind + shadcn/ui frontend. UI-only change. No schema, no auth, no API changes. T18 must be committed first (no direct file conflict, but clean tree is protocol).
+**Dynamic DNA State:**
+- **Product Context:** The "Plan" field in `TaskDetail` currently renders as a plain anchor link (identical to the original "PR" field implementation). The goal is to restyle it — and the PR field alongside it — as small badge/chip elements that look distinct from plain prose links. Sprint 7 added `plan_url` in T15; now we polish the visual treatment.
+- **Current Plan:** Sprint 7 → T20 in `docs/context/plan.md`
+- **Execution Files:**
+  - `apps/web/src/components/TaskDetail.tsx` — only file to modify
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/track-20 track/20-plan-url-chip`
+
+**Exact implementation for Skylar:**
+
+Read `TaskDetail.tsx` in full first. Locate the PR and Plan `<Field>` blocks. Currently both render as plain `<a>` links. Restyle both to use a small inline badge/chip treatment. A chip looks like:
+
+```tsx
+<a
+  href={task.pr_url}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-surface-secondary text-content-secondary hover:bg-surface-tertiary hover:text-content-primary transition-colors border border-border"
+>
+  {formatPrLabel(task.pr_url)}
+</a>
+```
+
+Apply the same chip class treatment to the Plan link. The Plan chip label text should be `"Plan"` (literal string, since plan docs don't have a parseable short form like GitHub PR numbers do).
+
+**Constraints:**
+- Both PR and Plan chips must be visually consistent with each other
+- The chip should be visually distinct from plain inline links elsewhere in TaskDetail
+- Do not change any other field; do not add new fields; do not touch the edit icon or other controls
+- Keep the `— ` empty state rendering unchanged (when `task.pr_url` is null, still show `<span className="text-content-tertiary">—</span>`)
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — all must exit zero
+2. `pnpm dev` — open a task that has both `pr_url` and `plan_url` set
+3. Confirm both fields render as chips (pill/badge style), not plain links
+4. Confirm empty state (null url) still shows `—`
+5. Invoke Bandit for QA gate
+
+**Next Step:** Skylar — create the worktree, read `TaskDetail.tsx` in full to locate the PR and Plan field blocks, then restyle both with the chip class treatment above. Run the verification checklist. Invoke Bandit.
+
+---
+
+### HANDOFF BRIDGE — T22
+**Topic:** CLI: daemon end-to-end smoke test
+**Track:** T22
+**Board task:** `7lqed55p3yxl`
+**Specialist:** Skylar
+**Static DNA Check:** Aligned — operational track. Uses `ak` CLI against the local dev server. No source code changes expected. T18 must be committed first (clean tree required before starting daemon work).
+**Dynamic DNA State:**
+- **Product Context:** The daemon (`ak start`) has never been run against the Sprint 7 board. This track validates the full lifecycle: daemon starts, discovers a board task, an agent claims it, the agent updates status, and `ak get task` reflects the change. The goal is to surface any bugs in the current daemon implementation.
+- **Current Plan:** Sprint 7 → T22 in `docs/context/plan.md`
+- **Execution Files:** None expected — operational track. Document findings in a comment on board task `7lqed55p3yxl`.
+
+**Worktree Setup:** N/A — operational track; no source changes. Work on the main checkout.
+
+**Pre-flight steps for Skylar:**
+
+1. **Refresh CLI:** `bash scripts/install-cli.sh` — rebuild and link `ak` locally
+2. **Discover board and repo:**
+   ```bash
+   node packages/cli/dist/index.js get board -o json   # find board eelil1mu
+   node packages/cli/dist/index.js get repo -o json    # find slink or any registered repo
+   node packages/cli/dist/index.js get agent -o json   # list registered agents
+   ```
+3. **Configure ak for local dev:**
+   ```bash
+   node packages/cli/dist/index.js config set --api-url http://localhost:5173 --api-key <machine-key>
+   ```
+   The machine API key must start with `ak_`. If none is configured, create one via the UI (Machines page) or `POST /api/machines` with a machine API key.
+
+4. **Run `ak start`** against board `eelil1mu`:
+   ```bash
+   ak start --board eelil1mu
+   ```
+
+5. **Observe and document:**
+   - Does the daemon start without errors?
+   - Does it discover `todo` tasks on the board?
+   - Does task claim succeed and status transition to `in_progress`?
+   - Does `ak get task <id>` show the updated status?
+   - Does the agent reach `done` or `in_review`?
+   - Any error messages, crashes, or stuck states?
+
+6. **Surface bugs:** For each bug found, note the error message, the command that triggered it, and the expected vs. actual behavior. Document in `task_logs` via `ak task log` or in the board task description.
+
+**Verification (success criteria):**
+- `ak start` runs without crashing on startup
+- At least one task goes through the full `todo → in_progress → in_review/done` lifecycle
+- `ak get task <id>` reflects the final status correctly
+- No unhandled exceptions in the daemon logs
+
+**Next Step:** Skylar — first confirm T18 is committed (run `git log --oneline -1` and verify). Then run `bash scripts/install-cli.sh` to get a fresh `ak` binary. Discover the board/repo/agent resources, configure credentials, and run the smoke test. Document all findings on board task `7lqed55p3yxl`.
+
+---
+
+## Archive: Sprint 6 — Board Polish
 
 **Objective:** Polish the board creation and view experience. Add theme support to boards, clean up the Kanban column set, improve task editing ergonomics, and seed planning labels automatically.
 
@@ -38,7 +262,7 @@
 
 ---
 
-*Last updated: 2026-05-21 (T9/T11/T12/T13 marked DONE; T10 unblocked; T10 Bridge issued 2026-05-21; T15 Bridge issued 2026-05-21; T14 Bridge issued 2026-05-21)*
+*Last updated: 2026-05-21 (T9/T11/T12/T13 marked DONE; T10 unblocked; T10 Bridge issued 2026-05-21; T15 Bridge issued 2026-05-21; T14 Bridge issued 2026-05-21) — ARCHIVED: Sprint 7 is now current*
 
 ---
 

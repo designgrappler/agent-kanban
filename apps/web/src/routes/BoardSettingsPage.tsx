@@ -17,6 +17,7 @@ interface BoardSettingsBoard {
   id: string;
   name: string;
   description?: string | null;
+  theme?: string | null;
   visibility: "private" | "public";
   share_slug: string | null;
 }
@@ -63,18 +64,20 @@ function BoardSettingsContent({ board, boardId }: { board: BoardSettingsBoard; b
 function BoardDetailsSection({ board, boardId }: { board: BoardSettingsBoard; boardId: string }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [theme, setTheme] = useState("");
   const updateBoard = useUpdateBoard();
 
   useEffect(() => {
     setName(board.name);
     setDescription(board.description || "");
+    setTheme(board.theme || "");
   }, [board.id]);
 
-  const hasChanges = name.trim() !== board.name || description.trim() !== (board.description || "");
+  const hasChanges = name.trim() !== board.name || description.trim() !== (board.description || "") || theme.trim() !== (board.theme || "");
 
   async function save() {
     try {
-      await updateBoard.mutateAsync({ id: boardId, name: name.trim(), description: description.trim() });
+      await updateBoard.mutateAsync({ id: boardId, name: name.trim(), description: description.trim(), theme: theme.trim() || null });
       toast.success("Board settings saved");
     } catch {
       toast.error("Failed to save board settings");
@@ -101,6 +104,20 @@ function BoardDetailsSection({ board, boardId }: { board: BoardSettingsBoard; bo
             onChange={(event) => setDescription(event.target.value)}
             rows={3}
             placeholder="What is this board for?"
+            className="resize-none"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs text-content-tertiary" htmlFor="board-theme">
+            Theme
+          </Label>
+          <Textarea
+            id="board-theme"
+            value={theme}
+            onChange={(event) => setTheme(event.target.value)}
+            rows={3}
+            placeholder="Describe the purpose of this sprint."
             className="resize-none"
           />
         </div>

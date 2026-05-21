@@ -70,8 +70,17 @@ export function useUpdateBoard() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...body }: { id: string; name?: string; description?: string; visibility?: "private" | "public"; labels?: any[] }) =>
-      api.boards.update(id, body),
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string;
+      name?: string;
+      description?: string;
+      theme?: string | null;
+      visibility?: "private" | "public";
+      labels?: any[];
+    }) => api.boards.update(id, body),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["boards"] });
       if (data?.id) queryClient.invalidateQueries({ queryKey: ["board", data.id] });

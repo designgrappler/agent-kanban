@@ -45,6 +45,7 @@ A track is **Done** only when ALL of the following are true:
 - [ ] No `console.log`, `debugger`, or hardcoded secrets in the diff
 - [ ] `docs/context/plan.md` and `tracks.md` updated to reflect the completed track
 - [ ] Board task for this track was created before the Handoff Bridge was issued (or retroactively before work began)
+- [ ] **If track includes a migration file:** dev server restarted after merge and migration confirmed applied to `.wrangler/state` DB (Wrangler applies pending migrations on startup — tests use fresh Miniflare and do not validate the live dev DB)
 - [ ] Bandit has issued a **PASS** verdict
 - [ ] Tim has given final approval (for tracks touching auth, schema, or payments)
 

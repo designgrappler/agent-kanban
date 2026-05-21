@@ -1,123 +1,96 @@
 # Agent Kanban — Active Tracks
 
-## Current Sprint: Sprint 6 — Board Polish
+## Current Sprint: Sprint 7 — UI Polish
 
 > **Working directory for all tracks:** `/Users/I826932/Developer/agent-kanban/`
 > **Specialist:** Skylar
-> **Worktree protocol:** T10 is now unblocked (T9 merged). T14 is blocked on Tim decisions. Use worktrees per AGENTIC.md §4 when running 2+ tracks simultaneously.
+> **Worktree protocol:** T18 must land before T19/T20/T22 can start. Use `bash scripts/worktree-add.sh` — never raw `git worktree add`.
 
 ---
 
-### Track 9 — Schema + Backend: `theme` column on boards
+### Track 18 — Cleanup: commit informal session work
 
-- **Status:** DONE — Bandit PASS
+- **Status:** todo
+- **Board task:** `djpjbua8dzi4`
 - **Specialist:** Skylar
-- **Branch:** `track/9-board-theme-schema`
-- **Goal:** Add `theme TEXT` nullable column to `boards` table. Wire through `boardRepo.createBoard`, `boardRepo.updateBoard`, `routes.ts` (POST and PATCH /api/boards), and `shared/types.ts` (`Board`, `CreateBoardInput`).
+- **Branch:** `track/18-cleanup-session-work`
+- **Goal:** Commit the four dirty files (`BoardSwitcher.tsx`, `Header.tsx`, `useBoard.ts`, `BoardSettingsPage.tsx`) plus `AGENTIC.md` DoD migration checkpoint as a single tracked Sprint 7 commit. Also add `theme?: string | null` to `api.boards.update` body type in `api.ts`.
 - **Primary files:**
-  - `apps/web/migrations/0023_board_theme.sql` — NEW: `ALTER TABLE boards ADD COLUMN theme TEXT;`
-  - `packages/shared/src/types.ts` — add `theme?: string | null` to `Board`; add `theme?: string` to `CreateBoardInput`
-  - `apps/web/server/boardRepo.ts` — `createBoard`: add `theme` param + INSERT; `updateBoard`: add `theme` to updates type + set/bind block
-  - `apps/web/server/routes.ts` — `POST /api/boards` body: add `theme?`; pass to `createBoard`; `PATCH /api/boards/:id` body: add `theme?`; pass to `updateBoard`
-- **Migration Safety:** Reversible — nullable column addition; drop column to roll back
-- **Security Review:** SCHEMA — **Tim acceptance REQUIRED before Bridge issuance**
-- **Depends on:** (unblocked)
-
----
-
-### Track 10 — Frontend: update create board form
-
-- **Status:** DONE — Bandit PASS
-- **Specialist:** Skylar
-- **Branch:** `track/10-board-form-update`
-- **Goal:** Remove board type UI selector from `NewBoardPage.tsx`. Hardcode `type: "dev"` in the create payload. Add Theme textarea with placeholder "Describe the purpose of this sprint."
-- **Primary files:**
-  - `apps/web/src/routes/NewBoardPage.tsx` — remove `boardType` state + type selector UI; add `boardTheme` state + Textarea; update `handleCreateBoard` payload
-- **Migration Safety:** Reversible
+  - `apps/web/src/components/BoardSwitcher.tsx`
+  - `apps/web/src/components/Header.tsx`
+  - `apps/web/src/hooks/useBoard.ts`
+  - `apps/web/src/routes/BoardSettingsPage.tsx`
+  - `apps/web/src/lib/api.ts`
+  - `AGENTIC.md`
+- **Migration Safety:** N/A — no schema migration
 - **Security Review:** N/A
-- **Depends on:** T9 (shared types must include `theme` on `CreateBoardInput`)
+- **Depends on:** nothing — execute first
 
 ---
 
-### Track 11 — Frontend: remove Cancelled column from board view
+### Track 19 — Frontend: board theme subtitle on BoardPage
 
-- **Status:** DONE — Bandit PASS
+- **Status:** todo
+- **Board task:** `wgs05lo6su3c`
 - **Specialist:** Skylar
-- **Branch:** `track/11-remove-cancelled-column`
-- **Goal:** Remove `"cancelled"` from `TASK_STATUSES` in `BoardPage.tsx` and `SharePage.tsx`. Remove `cancelled: Ban` from `KanbanColumn.tsx` COLUMN_ICONS. No backend changes.
+- **Branch:** `track/19-board-theme-subtitle`
+- **Goal:** Show `board.theme` as a subdued subtitle line beneath the board name in the board view. Conditional render — only shown when `board.theme` is non-null/non-empty. Read-only. Option A (Tim's decision 2026-05-21) — subdued subtitle, no collapsible banner.
 - **Primary files:**
-  - `apps/web/src/routes/BoardPage.tsx` — remove `"cancelled"` from `TASK_STATUSES` array and `TASK_STATUS_LABELS`
-  - `apps/web/src/routes/SharePage.tsx` — same removal
-  - `apps/web/src/components/KanbanColumn.tsx` — remove `cancelled: Ban` from `COLUMN_ICONS`; remove `Ban` import if unused elsewhere
-  - `apps/web/src/components/DemoBoard.tsx` — Tim confirmed: remove Cancelled column from demo too
-- **Migration Safety:** Reversible
+  - `apps/web/src/routes/BoardPage.tsx`
+- **Migration Safety:** Reversible — UI-only change
 - **Security Review:** N/A
-- **Depends on:** (unblocked — independent of T9/T10)
+- **Depends on:** T18
 
 ---
 
----
+### Track 20 — Frontend: plan_url chip styling in TaskDetail
 
-### Track 12 — Frontend: edit icon in TaskDetail read-only view
-
-- **Status:** DONE — Bandit PASS
+- **Status:** todo
+- **Board task:** `m87r7tx6go9l`
 - **Specialist:** Skylar
-- **Branch:** `track/12-task-detail-edit-icon`
-- **Goal:** Add optional `onEdit` prop to `TaskDetail`. Render a Pencil icon button in the header when `task.status === "todo" && onEdit`. Wire `onEdit={handleEditTask}` from `BoardPage`.
+- **Branch:** `track/20-plan-url-chip`
+- **Goal:** Restyle the "Plan" field in `TaskDetail` from plain link text to a small badge/chip consistent with the PR link treatment. Check and harmonize PR link styling at the same time.
 - **Primary files:**
-  - `apps/web/src/components/TaskDetail.tsx` — add `onEdit?` prop to interface; add Pencil button in header; import `Pencil` from lucide-react
-  - `apps/web/src/routes/BoardPage.tsx` — pass `onEdit={handleEditTask}` to `<TaskDetail>`
-- **Migration Safety:** Reversible
+  - `apps/web/src/components/TaskDetail.tsx`
+- **Migration Safety:** Reversible — UI-only change
 - **Security Review:** N/A
-- **Depends on:** (unblocked — independent of T9/T10/T11)
+- **Depends on:** T18
 
 ---
 
-### Track 13 — Backend: seed `ready-for-planning` label on board creation
+### Track 21 — DROPPED
 
-- **Status:** DONE — Bandit PASS
+**T21 DROPPED** — absorbed into T19. Tim chose Option A (subdued subtitle beneath board name); no collapsible banner track needed.
+
+---
+
+### Track 22 — CLI: daemon end-to-end smoke test
+
+- **Status:** todo
+- **Board task:** `7lqed55p3yxl`
 - **Specialist:** Skylar
-- **Branch:** `track/13-seed-planning-label`
-- **Goal:** After `createBoard()` inserts the board row, call `createBoardLabel()` to seed the `ready-for-planning` label. No schema migration required.
-- **Primary files:**
-  - `apps/web/server/boardRepo.ts` — add `createBoardLabel(db, id, { name: "ready-for-planning", color: "#6366F1", description: "Marks a task as ready for AI-assisted planning." })` inside `createBoard()` after `seedBuiltinAgents`
-- **Migration Safety:** Reversible (label deleteable via existing DELETE endpoint)
+- **Branch:** N/A — operational track, no source changes expected
+- **Goal:** Run `ak start` against board `eelil1mu`, register Skylar/Bandit/Peaches as agents, verify task claim → status transitions → `ak get task` all work. Surface any bugs found; document findings.
+- **Primary files:** none expected (operational; document findings in track notes)
+- **Migration Safety:** N/A
 - **Security Review:** N/A
-- **Depends on:** (unblocked — independent of all other tracks)
+- **Depends on:** T18
 
 ---
 
-### Track 15 — Backend + Frontend: `plan_url` column on tasks
+### Track 23 — Docs: formal Sprint 7 open
 
-- **Status:** DONE — Bandit PASS
-- **Specialist:** Skylar
-- **Branch:** `track/15-task-plan-url`
-- **Goal:** Add `plan_url TEXT` nullable column to `tasks` table. Mirror `pr_url` pattern throughout: migration, shared types, taskRepo (INSERT + updateTask allowedFields), TaskDetail display, CLI output and describe, apply parser CAMEL_TO_SNAKE map.
+- **Status:** done
+- **Board task:** `od2z7r2ejz3d`
+- **Specialist:** Peaches
+- **Branch:** `track/1-fork-and-clone` (current working branch)
+- **Goal:** Update `docs/context/plan.md` and `docs/context/tracks.md` to reflect Sprint 7. Peaches track — executed as part of sprint opening.
 - **Primary files:**
-  - `apps/web/migrations/0024_task_plan_url.sql` — NEW: `ALTER TABLE tasks ADD COLUMN plan_url TEXT;`
-  - `packages/shared/src/types.ts` — add `plan_url: string | null` to `Task` interface (after `pr_url`)
-  - `apps/web/server/taskRepo.ts` — add `plan_url` to INSERT column list (NULL default); add to `updateTask` Pick type and `allowedFields` array
-  - `apps/web/src/components/TaskDetail.tsx` — add read-only "Plan" Field after "PR" Field in the details grid
-  - `packages/cli/src/commands/describe.ts` — add `plan_url` display line after `pr_url` line
-  - `packages/cli/src/output.ts` — add `plan_url` to `formatTaskList`, `formatTaskListWide`, and detailed task block
-  - `packages/cli/src/apply/parser.ts` — add `planUrl: "plan_url"` to `CAMEL_TO_SNAKE` map
-- **Migration Safety:** Reversible — nullable column addition; Tim schema sign-off: YES (2026-05-21)
-- **Security Review:** SCHEMA — Tim acceptance: YES (2026-05-21)
-- **Depends on:** (unblocked — independent of all other active tracks)
-
----
-
-### Track 14 — Agent OS: AI-assisted planning workflow
-
-- **Status:** DONE — Bandit PASS
-- **Specialist:** Skylar (Agent OS config only — no `apps/web/` or `packages/` source changes)
-- **Branch:** `track/14-planning-workflow`
-- **Goal:** Define AI-assisted planning behavior in `skills/agent-kanban/SKILL.md`. Four behaviors: (1) silent recognition of new `todo` tasks, (2) deferred prompt after ~1 minute when `ready-for-planning` label is applied, (3) immediate planning on explicit user request, (4) on approval — write plan doc, set `plan_url` on task via `PATCH /api/tasks/:id`, leave task in `todo`.
-- **Primary files:**
-  - `skills/agent-kanban/SKILL.md` — append `## AI-Assisted Planning Workflow` section (only file to modify)
-- **Migration Safety:** Reversible (config/doc change only)
+  - `docs/context/plan.md`
+  - `docs/context/tracks.md`
+- **Migration Safety:** N/A
 - **Security Review:** N/A
-- **Depends on:** T13 (label seeded on boards — DONE), T15 (`plan_url` column — DONE)
+- **Depends on:** nothing
 
 ---
 
@@ -126,63 +99,23 @@
 **MANDATORY: Always use `scripts/worktree-add.sh`, never raw `git worktree add`.**
 See AGENTIC.md §4 for the full explanation. pnpm's hoisted `node_modules` are not present in raw worktrees — the script symlinks them.
 
-T10 is complete — DONE. T15 Bridge issued 2026-05-21 (Tim schema sign-off received). T14 Bridge issued 2026-05-21 — now IN PROGRESS.
+T18 is the gate — T19, T20, and T22 cannot start until T18 commits the dirty working tree.
 
 ---
 
-### Track 16 — Infra: worktree support for pnpm monorepo
+## Archive: Sprint 6 Tracks (COMPLETE)
 
-- **Status:** DONE — Bandit PASS
-- **Specialist:** Skylar
-- **Branch:** `track/16-worktree-support`
-- **Goal:** Make `pnpm build`, `pnpm tsc --noEmit`, `npx vitest run`, and `npx biome` work inside git worktrees. Three deliverables: (1) `scripts/worktree-add.sh` that symlinks all `node_modules` dirs from root into the new worktree; (2) add `@agent-kanban/shared` path alias to `apps/web/tsconfig.json` to resolve from source instead of `dist/`; (3) AGENTIC.md §4 already updated by Peaches.
-- **Primary files:**
-  - `scripts/worktree-add.sh` — NEW: wrapper around `git worktree add` that symlinks `node_modules`, `apps/web/node_modules`, `packages/shared/node_modules`, `packages/cli/node_modules` from root into the new worktree
-  - `apps/web/tsconfig.json` — add `"@agent-kanban/shared": ["../../packages/shared/src/index.ts"]` to `compilerOptions.paths`
-- **Already done (Peaches):** `AGENTIC.md §4` updated to mandate `scripts/worktree-add.sh`; worktree commands in this file updated
-- **Migration Safety:** N/A — no schema, no app source
-- **Security Review:** N/A
-- **Depends on:** (unblocked — independent of all Sprint 6 tracks)
-
----
-
-### Track 17 — Docs: AGENTIC.md board-as-authoritative-ledger protocol
-
-- **Status:** DONE — Bandit PASS
-- **Specialist:** Skylar
-- **Branch:** `track/17-agentic-board-protocol`
-- **Goal:** Add "Board First" protocol to AGENTIC.md. Three edits: (1) Phase 0 (Board Setup) in §5 Handoff Logic — Peaches must create board tasks via API before any Handoff Bridge; (2) Sprint Planning Protocol subsection with 5-point rule: board-first, 1:1 mapping, board authoritative, retroactive fix, API auth; (3) DoD checkbox confirming board task was created.
-- **Primary files:**
-  - `AGENTIC.md` — three targeted edits (Phase 0, Sprint Planning Protocol, DoD checkbox)
-  - `docs/context/tracks.md` — add this entry
-  - `docs/context/plan.md` — add T17 row to Sprint 6 table
-- **Migration Safety:** N/A — doc-only change
-- **Security Review:** N/A
-- **Depends on:** (unblocked — Sprint 6 complete)
-
----
-
-## Open Questions (blocking)
-
-1. **T11 — Orphaned cancelled tasks:** Once the Cancelled column is removed, tasks cancelled by agents are invisible in the board UI. Is that acceptable, or should we add a "tombstone" view (e.g., TaskDetail accessible via direct link)? The current TaskDetail panel already shows task status — so cancelled tasks can be viewed if you know their ID.
-2. **T14/T15 — Plan document link:** Tim selected Option A (`plan_url TEXT` column on `tasks` table). Schema sign-off **RECEIVED 2026-05-21**. T15 Bridge issued. T15 merged 2026-05-21; T14 now unblocked.
-
-**Resolved (no longer blocking):**
-- T9 schema sign-off: APPROVED — Tim confirmed `ALTER TABLE boards ADD COLUMN theme TEXT` (2026-05-20)
-- T11 DemoBoard.tsx: CONFIRMED — remove Cancelled column from `DemoBoard.tsx` too (2026-05-20)
-- T13 existing boards migration: N/A — test boards deleted from D1; Sprint 6 board `bf8h6r9r` is the only board (2026-05-20)
-- T13 label color: CONFIRMED — use default `#6366F1` (indigo-500) as planned (2026-05-20)
-- T14 wait behavior: CONFIRMED — check elapsed time (not immediate prompt) (2026-05-20)
-
----
-
-## Backlog (deferred from Sprint 5)
-
-- **CLI daemon end-to-end:** Run `ak start` against the local board; register Skylar/Bandit/Peaches as board agents; have them update task status via `ak`. Deferred from Sprint 4/5.
-- **AI-assisted planning prompt:** Board-level "kick off" action that sends current `todo` tasks to an agent for planning/ordering. Deferred — Sprint 5 lays the foundation.
-- **P2 — Domain Judgment → Capabilities rename:** Standardize section heading in agent files.
-- **Expand agent types post-sprint:** Broaden agent templates beyond dev roles.
-- **Non-code artifact reviewer:** A skill for completeness/traceability/format checks on document artifacts.
+| Track | Goal | Status |
+|---|---|---|
+| T9 | Schema + Backend: `theme` column on boards | DONE — Bandit PASS |
+| T10 | Frontend: update create board form (add Theme field, remove type selector) | DONE — Bandit PASS |
+| T11 | Frontend: remove Cancelled column from board view | DONE — Bandit PASS |
+| T12 | Frontend: edit icon in TaskDetail for todo tasks | DONE — Bandit PASS |
+| T13 | Backend: seed `ready-for-planning` label on board creation | DONE — Bandit PASS |
+| T14 | Agent OS: AI-assisted planning workflow | DONE — Bandit PASS |
+| T15 | Backend: `plan_url` column on tasks | DONE — Bandit PASS |
+| T16 | Infra: worktree support for pnpm monorepo | DONE — Bandit PASS |
+| T17 | Docs: AGENTIC.md board-as-authoritative-ledger protocol | DONE — Bandit PASS |
 
 ---
 
@@ -207,5 +140,7 @@ T10 is complete — DONE. T15 Bridge issued 2026-05-21 (Tim schema sign-off rece
 | T4 | Smoke test (board renders, all 5 columns verified) | DONE |
 
 ---
+
+*Last updated: 2026-05-21 (Sprint 7 opened; T18/T19/T20/T22/T23 created; T21 dropped; Handoff Bridges issued for T18/T19/T20/T22)*
 
 *Last updated: 2026-05-20 (T9/T10/T11/T12/T13/T14/T15/T16/T17 DONE — Bandit PASS all)*
