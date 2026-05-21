@@ -1,6 +1,8 @@
+import type { Task } from "@agent-kanban/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
+import { Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
@@ -44,6 +46,7 @@ interface TaskDetailProps {
   onClose: () => void;
   onRefresh: () => void;
   onAgentClick?: (agentId: string) => void;
+  onEdit?: (task: Task) => void;
 }
 
 function formatElapsed(ms: number): string {
@@ -82,7 +85,7 @@ function LiveDuration({ startedAt, finishedMinutes }: { startedAt: string | null
   return <span className="font-mono text-[13px]">{formatElapsed(finishedMinutes! * 60_000)}</span>;
 }
 
-export function TaskDetail({ taskId, labels = [], onClose, onRefresh, onAgentClick: _onAgentClick }: TaskDetailProps) {
+export function TaskDetail({ taskId, labels = [], onClose, onRefresh, onAgentClick: _onAgentClick, onEdit }: TaskDetailProps) {
   const queryClient = useQueryClient();
   const [chatOpen, setChatOpen] = useState(false);
   const { notes: sseNotes, reconnecting } = useSSE({ taskId, enabled: true });
@@ -317,9 +320,16 @@ export function TaskDetail({ taskId, labels = [], onClose, onRefresh, onAgentCli
                   })}
                 </div>
               </div>
-              <Button variant="ghost" size="icon-sm" onClick={onClose}>
-                ✕
-              </Button>
+              <div className="flex items-center gap-1">
+                {task.status === "todo" && onEdit && (
+                  <Button variant="ghost" size="icon-sm" onClick={() => onEdit(task)} aria-label="Edit task">
+                    <Pencil className="size-4" />
+                  </Button>
+                )}
+                <Button variant="ghost" size="icon-sm" onClick={onClose}>
+                  ✕
+                </Button>
+              </div>
             </div>
 
             {detailsContent}

@@ -245,6 +245,7 @@ export function BoardPage() {
           labels={board.labels ?? []}
           onClose={() => setSelectedTask(null)}
           onRefresh={refresh}
+          onEdit={handleEditTask}
           onAgentClick={(agentId) => {
             setSelectedTask(null);
             setSelectedAgent(agentId);
