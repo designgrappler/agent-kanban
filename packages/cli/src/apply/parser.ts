@@ -16,6 +16,7 @@ const CAMEL_TO_SNAKE: Record<string, string> = {
   repositoryId: "repository_id",
   handoffTo: "handoff_to",
   prUrl: "pr_url",
+  planUrl: "plan_url",
 };
 
 function convertSpec(raw: Record<string, unknown>): Record<string, unknown> {

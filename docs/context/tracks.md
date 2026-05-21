@@ -89,7 +89,7 @@
 
 ### Track 15 — Backend + Frontend: `plan_url` column on tasks
 
-- **Status:** IN PROGRESS — Bridge issued 2026-05-21
+- **Status:** DONE — Bandit PASS
 - **Specialist:** Skylar
 - **Branch:** `track/15-task-plan-url`
 - **Goal:** Add `plan_url TEXT` nullable column to `tasks` table. Mirror `pr_url` pattern throughout: migration, shared types, taskRepo (INSERT + updateTask allowedFields), TaskDetail display, CLI output and describe, apply parser CAMEL_TO_SNAKE map.
@@ -193,4 +193,4 @@ T10 is complete — DONE. T15 Bridge issued 2026-05-21 (Tim schema sign-off rece
 
 ---
 
-*Last updated: 2026-05-21 (T9/T10/T11/T12/T13/T16 DONE — Bandit PASS all; T15 Bridge issued 2026-05-21; T14 unblocked once T15 merges)*
+*Last updated: 2026-05-21 (T9/T10/T11/T12/T13/T15/T16 DONE — Bandit PASS all; T14 unblocked, pending T15 merge)*

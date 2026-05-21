@@ -22,6 +22,7 @@ function formatDescribeTask(task: any, notes: any[], messages: any[]): string {
   }
   lines.push(`${pad("Blocked")} ${task.blocked ? "true" : "false"}`);
   if (task.pr_url) lines.push(`${pad("PR")} ${task.pr_url}`);
+  if (task.plan_url) lines.push(`${pad("Plan")} ${task.plan_url}`);
   if (task.description) {
     lines.push("");
     lines.push("Description:");

@@ -43,6 +43,7 @@ export interface Task {
   created_by: string | null;
   assigned_to: string | null;
   pr_url: string | null;
+  plan_url: string | null;
   input: Record<string, unknown> | null;
   created_from: string | null;
   scheduled_at: string | null;

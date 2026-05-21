@@ -187,6 +187,18 @@ export function TaskDetail({ taskId, labels = [], onClose, onRefresh, onAgentCli
             )
           }
         />
+        <Field
+          label="Plan"
+          value={
+            task.plan_url ? (
+              <a href={task.plan_url} target="_blank" rel="noopener noreferrer" className="font-mono text-[13px] text-accent hover:underline">
+                Plan
+              </a>
+            ) : (
+              <span className="text-content-tertiary">—</span>
+            )
+          }
+        />
         {task.scheduled_at && (
           <Field
             label="Scheduled"

@@ -56,7 +56,8 @@ export function formatTaskList(tasks: any[]): string {
     const repo = t.repository_name ? `(${t.repository_name})` : "";
     const agent = t.assigned_to ? `→ ${t.assigned_to.slice(0, 8)}` : "";
     const pr = t.pr_url ? `PR: ${t.pr_url}` : "";
-    return `  ${t.id}  ${status} ${labels} ${t.title} ${blocked} ${repo} ${agent} ${pr}`.trimEnd();
+    const plan = t.plan_url ? `Plan: ${t.plan_url}` : "";
+    return `  ${t.id}  ${status} ${labels} ${t.title} ${blocked} ${repo} ${agent} ${pr} ${plan}`.trimEnd();
   });
 
   return lines.join("\n");
@@ -73,7 +74,8 @@ export function formatTaskListWide(tasks: any[]): string {
     const agent = t.assigned_to ? t.assigned_to.slice(0, 12).padEnd(14) : "".padEnd(14);
     const created = t.created_at ? new Date(t.created_at).toISOString().slice(0, 10) : "";
     const pr = t.pr_url ? `PR: ${t.pr_url}` : "";
-    return `  ${t.id}  ${status} ${labels} ${t.title} ${blocked} ${repo} ${agent} ${created} ${pr}`.trimEnd();
+    const plan = t.plan_url ? `Plan: ${t.plan_url}` : "";
+    return `  ${t.id}  ${status} ${labels} ${t.title} ${blocked} ${repo} ${agent} ${created} ${pr} ${plan}`.trimEnd();
   });
 
   return lines.join("\n");
@@ -180,6 +182,7 @@ export function formatTask(task: any): string {
   if (task.repository_name) lines.push(`  Repository:  ${task.repository_name}`);
   if (task.depends_on?.length) lines.push(`  Depends on:  ${task.depends_on.join(", ")}`);
   if (task.pr_url) lines.push(`  PR:          ${task.pr_url}`);
+  if (task.plan_url) lines.push(`  Plan:        ${task.plan_url}`);
   if (task.description) lines.push(`\n  ${task.description}`);
   if (task.input) lines.push(`\n  Input: ${JSON.stringify(task.input)}`);
   return lines.join("\n");
