@@ -1,8 +1,5 @@
-import { createRequire } from "node:module";
 import path from "node:path";
 import { defineConfig } from "vitest/config";
-
-const require = createRequire(import.meta.url);
 
 export default defineConfig({
   resolve: {
@@ -13,8 +10,8 @@ export default defineConfig({
       react: path.resolve(__dirname, "apps/web/node_modules/react"),
       "react-dom": path.resolve(__dirname, "apps/web/node_modules/react-dom"),
       "react/jsx-runtime": path.resolve(__dirname, "apps/web/node_modules/react/jsx-runtime"),
-      "react-router-dom": require.resolve("react-router-dom"),
-      dompurify: require.resolve("dompurify"),
+      "react-router-dom": path.resolve(__dirname, "apps/web/node_modules/react-router-dom"),
+      dompurify: path.resolve(__dirname, "node_modules/dompurify"),
       "lucide-react": path.resolve(__dirname, "apps/web/node_modules/lucide-react"),
       "@base-ui/react": path.resolve(__dirname, "apps/web/node_modules/@base-ui/react"),
       "@assistant-ui/react": path.resolve(__dirname, "apps/web/node_modules/@assistant-ui/react"),
@@ -30,6 +27,7 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     include: ["**/*.test.{ts,tsx}"],
+    exclude: [".worktrees/**", "**/node_modules/**"],
     coverage: {
       provider: "v8",
       include: ["apps/web/server/**/*.ts", "packages/shared/src/**/*.ts", "packages/cli/src/**/*.ts"],

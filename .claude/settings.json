@@ -2,5 +2,18 @@
   "attribution": {
     "commit": "",
     "pr": ""
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Session ending. DNA hygiene reminder: verify pnpm build passes, no secrets in diff, docs/context/ updated, .dev.vars gitignored.'"
+          }
+        ]
+      }
+    ]
   }
 }

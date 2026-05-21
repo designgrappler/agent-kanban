@@ -1,14 +1,18 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { AgentProfile } from "../components/AgentProfile";
+import { BacklogTaskForm } from "../components/BacklogTaskForm";
 import { FilterBar } from "../components/FilterBar";
 import { AgentAvatarOverlay } from "../components/FloatingAvatar";
 import { Header } from "../components/Header";
 import { KanbanColumn } from "../components/KanbanColumn";
 import { TaskChatDrawer } from "../components/TaskChatDrawer";
 import { TaskDetail } from "../components/TaskDetail";
+import { Button } from "../components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { useAgentPresence } from "../hooks/useAgentPresence";
 import { useBoard } from "../hooks/useBoard";
+import { api } from "../lib/api";
 
 const TASK_STATUSES = ["todo", "in_progress", "in_review", "done", "cancelled"] as const;
 
@@ -30,6 +34,13 @@ export function BoardPage() {
   const [activeRepository, setActiveRepository] = useState<string | null>(null);
   const [activeLabel, setActiveLabel] = useState<string | null>(null);
   const [mobileTab, setMobileTab] = useState(0);
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<"create" | "edit">("create");
+  const [editingTask, setEditingTask] = useState<any | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const repositories = useMemo(() => {
     if (!board?.tasks) return [];
@@ -57,6 +68,40 @@ export function BoardPage() {
       tasks: tasks.filter((t: any) => t.status === status),
     }));
   }, [board, activeRepository, activeLabel]);
+
+  function handleAddTask() {
+    setEditingTask(null);
+    setFormMode("create");
+    setFormOpen(true);
+  }
+
+  function handleEditTask(task: any) {
+    setEditingTask(task);
+    setFormMode("edit");
+    setFormOpen(true);
+  }
+
+  function handleDeleteTask(task: any) {
+    setDeleteTarget(task);
+    setDeleteError(null);
+    setDeleteConfirmOpen(true);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeletePending(true);
+    setDeleteError(null);
+    try {
+      await api.tasks.delete(deleteTarget.id);
+      setDeleteConfirmOpen(false);
+      setDeleteTarget(null);
+      refresh();
+    } catch (err: any) {
+      setDeleteError(err.message ?? "Delete failed");
+    } finally {
+      setDeletePending(false);
+    }
+  }
 
   if (error === "NOT_AUTHENTICATED") {
     window.location.href = "/auth";
@@ -129,7 +174,16 @@ export function BoardPage() {
       {/* Desktop: 5-column grid */}
       <div className="hidden md:grid flex-1 overflow-hidden" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}>
         {columns.map((col) => (
-          <KanbanColumn key={col.status} column={col} labels={board.labels ?? []} onTaskClick={setSelectedTask} onAgentClick={setChatTask} />
+          <KanbanColumn
+            key={col.status}
+            column={col}
+            labels={board.labels ?? []}
+            onTaskClick={setSelectedTask}
+            onAgentClick={setChatTask}
+            onAddTask={col.status === "todo" ? handleAddTask : undefined}
+            onEditTask={handleEditTask}
+            onDeleteTask={handleDeleteTask}
+          />
         ))}
       </div>
 
@@ -138,11 +192,53 @@ export function BoardPage() {
         {columns
           .filter((_, i) => i === mobileTab)
           .map((col) => (
-            <KanbanColumn key={col.status} column={col} labels={board.labels ?? []} onTaskClick={setSelectedTask} onAgentClick={setChatTask} />
+            <KanbanColumn
+              key={col.status}
+              column={col}
+              labels={board.labels ?? []}
+              onTaskClick={setSelectedTask}
+              onAgentClick={setChatTask}
+              onAddTask={col.status === "todo" ? handleAddTask : undefined}
+              onEditTask={handleEditTask}
+              onDeleteTask={handleDeleteTask}
+            />
           ))}
       </div>
 
       <AgentAvatarOverlay avatars={avatars} />
+
+      {board && (
+        <BacklogTaskForm
+          mode={formMode}
+          open={formOpen}
+          boardId={board.id}
+          initialTask={editingTask}
+          boardLabels={board.labels ?? []}
+          onClose={() => setFormOpen(false)}
+          onSuccess={() => {
+            setFormOpen(false);
+            refresh();
+          }}
+        />
+      )}
+
+      <Dialog open={deleteConfirmOpen} onOpenChange={(open) => !open && setDeleteConfirmOpen(false)}>
+        <DialogContent className="sm:max-w-sm" showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Delete task</DialogTitle>
+            <DialogDescription>Delete "{deleteTarget?.title}"? This cannot be undone.</DialogDescription>
+          </DialogHeader>
+          {deleteError && <p className="text-xs text-error">{deleteError}</p>}
+          <DialogFooter className="flex-col sm:flex-row">
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deletePending}>
+              {deletePending ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {selectedTask && (
         <TaskDetail

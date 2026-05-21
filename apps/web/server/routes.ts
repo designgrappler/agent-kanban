@@ -55,10 +55,9 @@ import {
   updateMachine,
   upsertMachine,
 } from "./machineRepo";
-import { createMailbox, deleteMailbox, getEmail, getInbox } from "./mailsService";
+import { getEmail, getInbox } from "./mailsService";
 import { createMessage, listMessages } from "./messageRepo";
 import { metricsMiddleware } from "./metrics";
-import { getMachineMetrics } from "./metricsRepo";
 import { createRepository, deleteRepository, getRepository, listRepositories } from "./repositoryRepo";
 import { createSSEResponse } from "./sse";
 import { getSystemStats } from "./statsRepo";
@@ -606,31 +605,22 @@ api.post("/api/agents", async (c) => {
   const prepared = await prepareAgent(c.env.DB, ownerId, body as CreateAgentInput, identity);
 
   // External service — create mailbox (skip if MAILS_ADMIN_TOKEN not configured)
-  const mailboxToken = c.env.MAILS_ADMIN_TOKEN && !existingUsername ? await createMailbox(c.env.MAILS_ADMIN_TOKEN, email) : undefined;
+  const mailboxToken: string | undefined = undefined;
 
+  // Single atomic insert with all fields
+  const agent = await upsertLatestAgent(c.env.DB, prepared, {
+    mailboxToken,
+    gpgSubkeyId: latestIdentity ? undefined : identity.id.toUpperCase(),
+  });
+
+  // GitHub sync — best-effort, skip if not connected
   try {
-    // Single atomic insert with all fields
-    const agent = await upsertLatestAgent(c.env.DB, prepared, {
-      mailboxToken,
-      gpgSubkeyId: latestIdentity ? undefined : identity.id.toUpperCase(),
-    });
-
-    // GitHub sync — best-effort, skip if not connected
-    try {
-      await syncToGithub(c.env, ownerId, email);
-    } catch (err: unknown) {
-      logger.warn(`github sync failed for agent ${agent.id}: ${err instanceof Error ? err.message : String(err)}`);
-    }
-
-    return c.json(agent, 201);
-  } catch (err) {
-    if (!existingUsername) {
-      await deleteMailbox(c.env.MAILS_ADMIN_TOKEN, email).catch((cleanupErr: unknown) => {
-        logger.warn(`mailbox cleanup failed for ${email}: ${cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr)}`);
-      });
-    }
-    throw err;
+    await syncToGithub(c.env, ownerId, email);
+  } catch (err: unknown) {
+    logger.warn(`github sync failed for agent ${agent.id}: ${err instanceof Error ? err.message : String(err)}`);
   }
+
+  return c.json(agent, 201);
 });
 
 api.patch("/api/agents/:id", async (c) => {
@@ -666,9 +656,6 @@ api.delete("/api/agents/:id", async (c) => {
   const email = agentEmail(agent.username);
   await deleteAgent(c.env.DB, agent.id);
   const remaining = await c.env.DB.prepare("SELECT 1 FROM agents WHERE username = ? LIMIT 1").bind(agent.username).first();
-  if (c.env.MAILS_ADMIN_TOKEN && !remaining) {
-    await deleteMailbox(c.env.MAILS_ADMIN_TOKEN, email);
-  }
 
   // Remove email from GitHub (best-effort)
   const token = await getGithubToken(c.env.DB, c.get("ownerId"));
@@ -778,7 +765,16 @@ api.use("/api/tasks/:id", async (c, next) => {
 api.post("/api/tasks", async (c) => {
   const body = await c.req.json();
   if (!body.title) throw new HTTPException(400, { message: "title is required" });
-  if (!body.assigned_to) throw new HTTPException(400, { message: "assigned_to is required" });
+  if (!body.assigned_to && c.get("identityType") !== "user") throw new HTTPException(400, { message: "assigned_to is required" });
+
+  if (c.get("identityType") === "user" && !body.repository_id && body.board_id) {
+    const boardRow = await c.env.DB.prepare("SELECT default_repository_id FROM boards WHERE id = ?")
+      .bind(body.board_id)
+      .first<{ default_repository_id: string | null }>();
+    if (boardRow?.default_repository_id) {
+      body.repository_id = boardRow.default_repository_id;
+    }
+  }
 
   if (body.input !== undefined && body.input !== null && typeof body.input !== "object") {
     throw new HTTPException(400, { message: "input must be a JSON object or null" });
@@ -818,11 +814,16 @@ api.patch("/api/tasks/:id", async (c) => {
     body.scheduled_at = normalized;
   }
 
-  // Workers can only update tasks they created
-  if (c.get("identityType") === "agent:worker") {
-    const existing = await c.env.DB.prepare("SELECT created_by FROM tasks WHERE id = ?").bind(c.req.param("id")).first<{ created_by: string }>();
+  const identityType = c.get("identityType");
+  if (identityType === "agent:worker" || identityType === "user") {
+    const existing = await c.env.DB.prepare("SELECT created_by, status FROM tasks WHERE id = ?")
+      .bind(c.req.param("id"))
+      .first<{ created_by: string; status: string }>();
     if (!existing) throw new HTTPException(404, { message: "Task not found" });
-    if (existing.created_by !== c.get("agentId")) throw new HTTPException(403, { message: "Workers can only update tasks they created" });
+    if (identityType === "agent:worker" && existing.created_by !== c.get("agentId"))
+      throw new HTTPException(403, { message: "Workers can only update tasks they created" });
+    if (identityType === "user" && existing.status !== "todo")
+      throw new HTTPException(403, { message: "Users can only update tasks in todo status" });
   }
 
   const task = await updateTask(c.env.DB, c.req.param("id"), body);
@@ -831,11 +832,16 @@ api.patch("/api/tasks/:id", async (c) => {
 });
 
 api.delete("/api/tasks/:id", async (c) => {
-  // Workers can only delete tasks they created
-  if (c.get("identityType") === "agent:worker") {
-    const existing = await c.env.DB.prepare("SELECT created_by FROM tasks WHERE id = ?").bind(c.req.param("id")).first<{ created_by: string }>();
+  const deleteIdentityType = c.get("identityType");
+  if (deleteIdentityType === "agent:worker" || deleteIdentityType === "user") {
+    const existing = await c.env.DB.prepare("SELECT created_by, status FROM tasks WHERE id = ?")
+      .bind(c.req.param("id"))
+      .first<{ created_by: string; status: string }>();
     if (!existing) throw new HTTPException(404, { message: "Task not found" });
-    if (existing.created_by !== c.get("agentId")) throw new HTTPException(403, { message: "Workers can only delete tasks they created" });
+    if (deleteIdentityType === "agent:worker" && existing.created_by !== c.get("agentId"))
+      throw new HTTPException(403, { message: "Workers can only delete tasks they created" });
+    if (deleteIdentityType === "user" && existing.status !== "todo")
+      throw new HTTPException(403, { message: "Users can only delete tasks in todo status" });
   }
 
   const deleted = await deleteTask(c.env.DB, c.req.param("id"));
@@ -952,14 +958,8 @@ api.get("/api/tasks/:id/messages", async (c) => {
 
 // ─── WebSocket Relay ───
 
-api.get("/api/tunnel/ws", async (c) => {
-  const ownerId = c.get("ownerId");
-  const id = c.env.TUNNEL_RELAY.idFromName(ownerId);
-  const stub = c.env.TUNNEL_RELAY.get(id);
-  const url = new URL(c.req.url);
-  url.pathname = "/ws";
-  url.searchParams.set("ownerId", ownerId);
-  return stub.fetch(new Request(url.toString(), c.req.raw));
+api.get("/api/tunnel/ws", (c) => {
+  return c.json({ error: "WebSocket tunnel not available in local mode" }, 501);
 });
 
 // ─── SSE Stream ───
@@ -976,10 +976,10 @@ api.get("/api/boards/:id/stream", async (c) => {
 // ─── Boards ───
 
 api.post("/api/boards", async (c) => {
-  const body = await c.req.json<{ name: string; description?: string; type: string }>();
+  const body = await c.req.json<{ name: string; description?: string; type: string; default_repository_id?: string }>();
   if (!body.name) throw new HTTPException(400, { message: "name is required" });
   if (!isBoardType(body.type)) throw new HTTPException(400, { message: "type must be 'dev' or 'ops'" });
-  const board = await createBoard(c.env.DB, c.get("ownerId"), body.name, body.type, body.description);
+  const board = await createBoard(c.env.DB, c.get("ownerId"), body.name, body.type, body.description, body.default_repository_id);
   return c.json(board, 201);
 });
 
@@ -1002,7 +1002,13 @@ api.get("/api/boards/:id", async (c) => {
 });
 
 api.patch("/api/boards/:id", async (c) => {
-  const body = await c.req.json<{ name?: string; description?: string; visibility?: "private" | "public"; labels?: any[] }>();
+  const body = await c.req.json<{
+    name?: string;
+    description?: string;
+    visibility?: "private" | "public";
+    labels?: any[];
+    default_repository_id?: string | null;
+  }>();
   const board = await updateBoard(c.env.DB, c.req.param("id"), body);
   if (!board) throw new HTTPException(404, { message: "Board not found" });
   return c.json(board);
@@ -1051,7 +1057,7 @@ api.get("/api/admin/stats", async (c) => {
 api.get("/api/admin/machines", async (c) => {
   requireAdmin(c);
   const machines = await listAllMachines(c.env.DB);
-  const metrics = await getMachineMetrics(c.env);
+  const metrics = new Map();
   return c.json(machines.map((m) => ({ ...m, metrics: metrics.get(m.id) ?? null })));
 });
 
