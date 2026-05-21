@@ -2,7 +2,19 @@
 
 ---
 
-## Current Sprint: Sprint 7 — UI Polish
+## Sprint 8 Backlog (not yet opened)
+
+Items deferred from Sprint 7 or surfaced during Sprint 7 execution. Peaches will formally plan when Sprint 8 opens.
+
+- **T22 (re-scoped)** — CLI daemon end-to-end smoke test. Original T22 was an operational "run the smoke" track; cold-run on 2026-05-21 found prerequisite gaps (missing `gpg`, broken `set -u` cleanup in script, opaque `json_query` errors, mandatory `<runtime>` argument undocumented). Re-scoped to: stand up local stack → harden script (3 specific bugs) → run twice green for idempotency → Bandit on script diff only.
+- **GPG prerequisite** — `ak start` requires `gpg` (signing agent commits) but it isn't installed on Tim's workstation and there's no preflight check or setup doc. Add either a `scripts/install-cli.sh`-style preflight or an `ak doctor` command that verifies daemon prerequisites.
+- **Peaches task-refinement workflow** — when Tim describes a task in non-engineering language, Peaches should refine it into engineering-aligned cards before Skylar executes. Concept; needs scoping. Board task `d5kv1hfw1d2v`.
+- **Lift `useBoardSSE` into shared provider** — surfaced during T24. `useBoard` and `useAgentPresence` each open their own EventSource per board mount; Chrome caps at ~6 per origin. Lift to a `BoardSSEContext` provider in `BoardPage.tsx` so consumers share one connection.
+- **`useAgentPresence` choreography for `released`/`timed_out`** — surfaced during T24. The choreography animates `claimed`/`review_requested`/`completed`/`rejected`/`cancelled` but skips `released` and `timed_out` even though those move cards. Define a release/timeout sequence.
+
+---
+
+## Archive: Sprint 7 — UI Polish (CLOSED 2026-05-21)
 
 **Objective:** Ship UI polish across three fronts: (1) commit and track the informal session work that accumulated in the working tree, (2) surface `board.theme` as a subtitle on the board view, (3) restyle `plan_url` as a chip in TaskDetail, and (4) run the first end-to-end daemon smoke test against a live Sprint 7 board.
 
@@ -12,11 +24,12 @@
 
 | Track | Goal | Status |
 |---|---|---|
-| T18 | Cleanup: commit informal session work + AGENTIC.md DoD migration | todo |
-| T19 | Frontend: board theme subtitle on BoardPage (Option A — subdued subtitle) | todo |
-| T20 | Frontend: plan_url chip styling in TaskDetail | todo |
-| T22 | CLI: daemon end-to-end smoke test | todo |
-| T23 | Docs: formal Sprint 7 open (plan.md + tracks.md) — Peaches track | done |
+| T18 | Cleanup: commit informal session work + AGENTIC.md DoD migration | DONE — Bandit PASS |
+| T19 | Frontend: board theme subtitle on BoardPage (Option A — subdued subtitle) | DONE — Bandit PASS |
+| T20 | Frontend: plan_url chip styling in TaskDetail | DONE — Bandit PASS |
+| T22 | CLI: daemon end-to-end smoke test | DEFERRED to Sprint 8 (re-scoped — see Sprint 8 Backlog) |
+| T23 | Docs: formal Sprint 7 open (plan.md + tracks.md) — Peaches track | DONE — Bandit PASS |
+| T24 | Frontend: real-time board updates via SSE invalidation | DONE — Bandit PASS |
 
 **T21 DROPPED** — absorbed into T19 (Option A selected by Tim; no banner/collapsible needed).
 
@@ -35,18 +48,19 @@ T23 — no dependencies (Peaches, done on sprint open)
 
 ## Definition of Done (Sprint 7)
 
-- [ ] T18: Four dirty files committed (`BoardSwitcher.tsx`, `Header.tsx`, `useBoard.ts`, `BoardSettingsPage.tsx`) plus `AGENTIC.md` DoD checkpoint migration; `api.ts` has `theme?: string | null` on `api.boards.update`; board task `djpjbua8dzi4` created; Bandit PASS
-- [ ] T19: `board.theme` renders as a subdued subtitle beneath board name in `BoardPage.tsx`; conditional on non-null/non-empty; board task `wgs05lo6su3c` created; Bandit PASS
-- [ ] T20: `plan_url` and `pr_url` fields in `TaskDetail.tsx` use consistent chip/badge styling; board task `m87r7tx6go9l` created; Bandit PASS
-- [ ] T22: `ak start` runs against board `eelil1mu`; Skylar/Bandit/Peaches registered as agents; task claim → status transition → `ak get task` all verified; board task `7lqed55p3yxl` created; findings documented
-- [x] T23: `plan.md` + `tracks.md` updated to Sprint 7; board task `od2z7r2ejz3d` created
-- [ ] `pnpm build` exits zero
-- [ ] `pnpm tsc --noEmit` exits zero
-- [ ] Bandit QA: PASS
+- [x] T18: Four dirty files committed; `api.ts` has `theme?: string | null` on `api.boards.update`; board task `djpjbua8dzi4`; Bandit PASS
+- [x] T19: `board.theme` renders as a subdued subtitle beneath board name in `BoardPage.tsx`; board task `wgs05lo6su3c`; Bandit PASS
+- [x] T20: `plan_url` and `pr_url` fields in `TaskDetail.tsx` use consistent chip styling; board task `m87r7tx6go9l`; Bandit PASS
+- [~] T22: DEFERRED to Sprint 8 — cold-run found prerequisite gaps (missing `gpg`, script bugs, undocumented runtime arg). Re-scoped track in Sprint 8 Backlog above.
+- [x] T23: `plan.md` + `tracks.md` updated to Sprint 7; board task `od2z7r2ejz3d`
+- [x] T24: Real-time SSE invalidation in `useBoard`; `refetchInterval` 30s → 60s; board task `87ocfjs35xo5`; Bandit PASS
+- [x] `pnpm build` exits zero (verified per-track)
+- [x] `pnpm tsc --noEmit` exits zero (verified per-track)
+- [x] Bandit QA: PASS on every executed track
 
 ---
 
-*Last updated: 2026-05-21 (Sprint 7 opened; T18–T23 tracks created; board tasks created on eelil1mu; Handoff Bridges issued for T18/T19/T20/T22)*
+*Last updated: 2026-05-21 (Sprint 7 CLOSED — T18/T19/T20/T23/T24 done; T22 deferred to Sprint 8 due to gpg prerequisite + script bugs; Sprint 8 Backlog seeded)*
 
 ---
 

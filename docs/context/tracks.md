@@ -1,111 +1,20 @@
 # Agent Kanban — Active Tracks
 
-## Current Sprint: Sprint 7 — UI Polish
+## Current Sprint: NONE — Sprint 7 closed 2026-05-21; Sprint 8 not yet opened
 
-> **Working directory for all tracks:** `/Users/I826932/Developer/agent-kanban/`
-> **Specialist:** Skylar
-> **Worktree protocol:** T18 must land before T19/T20/T22 can start. Use `bash scripts/worktree-add.sh` — never raw `git worktree add`.
+> When Tim is ready to open Sprint 7's successor, Peaches will plan the next sprint from the Sprint 8 Backlog below plus any new directives from Tim.
 
 ---
 
-### Track 18 — Cleanup: commit informal session work
+## Sprint 8 Backlog (not yet opened)
 
-- **Status:** todo
-- **Board task:** `djpjbua8dzi4`
-- **Specialist:** Skylar
-- **Branch:** `track/18-cleanup-session-work`
-- **Goal:** Commit the four dirty files (`BoardSwitcher.tsx`, `Header.tsx`, `useBoard.ts`, `BoardSettingsPage.tsx`) plus `AGENTIC.md` DoD migration checkpoint as a single tracked Sprint 7 commit. Also add `theme?: string | null` to `api.boards.update` body type in `api.ts`.
-- **Primary files:**
-  - `apps/web/src/components/BoardSwitcher.tsx`
-  - `apps/web/src/components/Header.tsx`
-  - `apps/web/src/hooks/useBoard.ts`
-  - `apps/web/src/routes/BoardSettingsPage.tsx`
-  - `apps/web/src/lib/api.ts`
-  - `AGENTIC.md`
-- **Migration Safety:** N/A — no schema migration
-- **Security Review:** N/A
-- **Depends on:** nothing — execute first
+Items deferred from Sprint 7 or surfaced during Sprint 7 execution. Peaches will formally plan when Sprint 8 opens — these are seeds, not committed tracks.
 
----
-
-### Track 19 — Frontend: board theme subtitle on BoardPage
-
-- **Status:** todo
-- **Board task:** `wgs05lo6su3c`
-- **Specialist:** Skylar
-- **Branch:** `track/19-board-theme-subtitle`
-- **Goal:** Show `board.theme` as a subdued subtitle line beneath the board name in the board view. Conditional render — only shown when `board.theme` is non-null/non-empty. Read-only. Option A (Tim's decision 2026-05-21) — subdued subtitle, no collapsible banner.
-- **Primary files:**
-  - `apps/web/src/routes/BoardPage.tsx`
-- **Migration Safety:** Reversible — UI-only change
-- **Security Review:** N/A
-- **Depends on:** T18
-
----
-
-### Track 20 — Frontend: plan_url chip styling in TaskDetail
-
-- **Status:** todo
-- **Board task:** `m87r7tx6go9l`
-- **Specialist:** Skylar
-- **Branch:** `track/20-plan-url-chip`
-- **Goal:** Restyle the "Plan" field in `TaskDetail` from plain link text to a small badge/chip consistent with the PR link treatment. Check and harmonize PR link styling at the same time.
-- **Primary files:**
-  - `apps/web/src/components/TaskDetail.tsx`
-- **Migration Safety:** Reversible — UI-only change
-- **Security Review:** N/A
-- **Depends on:** T18
-
----
-
-### Track 21 — DROPPED
-
-**T21 DROPPED** — absorbed into T19. Tim chose Option A (subdued subtitle beneath board name); no collapsible banner track needed.
-
----
-
-### Track 22 — CLI: daemon end-to-end smoke test
-
-- **Status:** todo
-- **Board task:** `7lqed55p3yxl`
-- **Specialist:** Skylar
-- **Branch:** N/A — operational track, no source changes expected
-- **Goal:** Run `ak start` against board `eelil1mu`, register Skylar/Bandit/Peaches as agents, verify task claim → status transitions → `ak get task` all work. Surface any bugs found; document findings.
-- **Primary files:** none expected (operational; document findings in track notes)
-- **Migration Safety:** N/A
-- **Security Review:** N/A
-- **Depends on:** T18
-
----
-
-### Track 23 — Docs: formal Sprint 7 open
-
-- **Status:** done
-- **Board task:** `od2z7r2ejz3d`
-- **Specialist:** Peaches
-- **Branch:** `track/1-fork-and-clone` (current working branch)
-- **Goal:** Update `docs/context/plan.md` and `docs/context/tracks.md` to reflect Sprint 7. Peaches track — executed as part of sprint opening.
-- **Primary files:**
-  - `docs/context/plan.md`
-  - `docs/context/tracks.md`
-- **Migration Safety:** N/A
-- **Security Review:** N/A
-- **Depends on:** nothing
-
----
-
-### Track 24 — Frontend: real-time board updates via SSE invalidation
-
-- **Status:** in progress (Skylar implementation done; pending Bandit)
-- **Board task:** `87ocfjs35xo5`
-- **Specialist:** Skylar
-- **Branch:** `track/24-sse-task-events`
-- **Goal:** When an agent (or any actor) changes a task's status, browser cards must move columns within ~2s instead of waiting for the 30s React Query polling interval. Subscribe `useBoard` to the existing board SSE stream and invalidate the `["board", boardId]` query on status-changing actions; bump polling to 60s as a safety net.
-- **Primary files:**
-  - `apps/web/src/hooks/useBoard.ts`
-- **Migration Safety:** Reversible — frontend-only, no schema changes
-- **Security Review:** N/A
-- **Depends on:** nothing
+- **T22 (re-scoped)** — CLI daemon end-to-end smoke test. Cold-run on 2026-05-21 found prerequisite gaps (missing `gpg`, broken `set -u` cleanup in script, opaque `json_query` errors, mandatory `<runtime>` argument undocumented). Re-scoped to: stand up local stack → harden script (3 specific bugs) → run twice green for idempotency → Bandit on script diff only. Original board task `7lqed55p3yxl` carries forward.
+- **GPG prerequisite track (NEW)** — `ak start` requires `gpg` for signing agent commits but it isn't installed on Tim's workstation and there's no preflight check or setup doc. Add either a preflight check in `scripts/install-cli.sh` or a new `ak doctor` command that verifies daemon prerequisites. Blocks T22.
+- **Peaches task-refinement workflow** — when Tim describes a task in non-engineering language, Peaches should refine it into engineering-aligned cards before Skylar executes. Concept; needs scoping. Board task `d5kv1hfw1d2v`.
+- **Lift `useBoardSSE` into shared provider** (from T24 follow-up) — `useBoard` and `useAgentPresence` each open their own EventSource per board mount; Chrome caps at ~6 per origin. Lift to a `BoardSSEContext` provider in `BoardPage.tsx` so consumers share one connection.
+- **`useAgentPresence` choreography for `released`/`timed_out`** (from T24 follow-up) — choreography animates `claimed`/`review_requested`/`completed`/`rejected`/`cancelled` but skips `released` and `timed_out` even though those move cards. Define a release/timeout sequence.
 
 ---
 
@@ -114,7 +23,19 @@
 **MANDATORY: Always use `scripts/worktree-add.sh`, never raw `git worktree add`.**
 See AGENTIC.md §4 for the full explanation. pnpm's hoisted `node_modules` are not present in raw worktrees — the script symlinks them.
 
-T18 is the gate — T19, T20, and T22 cannot start until T18 commits the dirty working tree.
+---
+
+## Archive: Sprint 7 Tracks (CLOSED 2026-05-21)
+
+| Track | Goal | Status |
+|---|---|---|
+| T18 | Cleanup: commit informal session work + AGENTIC.md DoD migration | DONE — Bandit PASS |
+| T19 | Frontend: board theme subtitle on BoardPage (Option A — subdued subtitle) | DONE — Bandit PASS |
+| T20 | Frontend: plan_url chip styling in TaskDetail | DONE — Bandit PASS |
+| T21 | DROPPED — absorbed into T19 | DROPPED |
+| T22 | CLI: daemon end-to-end smoke test | DEFERRED to Sprint 8 (re-scoped) |
+| T23 | Docs: formal Sprint 7 open (plan.md + tracks.md) | DONE — Bandit PASS |
+| T24 | Frontend: real-time board updates via SSE invalidation | DONE — Bandit PASS |
 
 ---
 
@@ -156,8 +77,4 @@ T18 is the gate — T19, T20, and T22 cannot start until T18 commits the dirty w
 
 ---
 
-*Last updated: 2026-05-21 (T24 added — real-time SSE board invalidation; Skylar implementation done, pending Bandit)*
-
-*Last updated: 2026-05-21 (Sprint 7 opened; T18/T19/T20/T22/T23 created; T21 dropped; Handoff Bridges issued for T18/T19/T20/T22)*
-
-*Last updated: 2026-05-20 (T9/T10/T11/T12/T13/T14/T15/T16/T17 DONE — Bandit PASS all)*
+*Last updated: 2026-05-21 (Sprint 7 CLOSED — T18/T19/T20/T23/T24 done with Bandit PASS; T22 deferred to Sprint 8 due to gpg prerequisite + script bugs; Sprint 8 Backlog seeded; T24 merged to main)*
