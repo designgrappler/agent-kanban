@@ -139,6 +139,13 @@ Confirmed in `apps/web/server/betterAuth.ts`:
 - One task card in each column
 - GitHub OAuth session active throughout
 
+**Note:** Tasks were pre-seeded at their terminal status; no sequential `todo → in_progress → in_review → done → cancelled` transition was executed on a single task. Board column rendering is confirmed but the status-update API path was not exercised in this smoke test.
+
+### Known Gaps for Sprint 5
+
+- **Task creation API not exercised:** `POST /api/tasks` requires `agent:worker` identity (machine API key with `ak_` prefix). User session auth is blocked by ACL (`auth.ts`). Tasks were inserted via SQLite directly. A real end-to-end CLI flow (`ak start` → agent claim → status transitions) was not run.
+- **Status transitions not exercised via API:** The web UI is read-only by design (no status buttons per CLAUDE.md). Transitions require either direct D1 writes or API calls with correct machine/agent identity. Sprint 5 should include a full daemon smoke test once `ak start` is wired up.
+
 ### Sprint 4 Status
 
 All tracks DONE. Local dev environment fully operational.
