@@ -94,9 +94,9 @@ export function BacklogTaskForm({ mode, open, boardId, initialTask, boardLabels,
             />
           </div>
 
-          {boardLabels.length > 0 && (
-            <div className="space-y-1.5">
-              <Label className="text-xs text-content-tertiary">Labels</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-content-tertiary">Labels</Label>
+            {boardLabels.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {boardLabels.map((label) => {
                   const selected = selectedLabels.includes(label.name);
@@ -114,8 +114,10 @@ export function BacklogTaskForm({ mode, open, boardId, initialTask, boardLabels,
                   );
                 })}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="text-xs text-content-tertiary">No labels defined on this board.</p>
+            )}
+          </div>
         </div>
 
         {error && <p className="text-xs text-error">{error}</p>}
