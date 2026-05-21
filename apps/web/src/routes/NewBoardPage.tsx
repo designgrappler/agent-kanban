@@ -4,6 +4,7 @@ import { AddMachineSteps } from "../components/AddMachineSteps";
 import { Header } from "../components/Header";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { Textarea } from "../components/ui/textarea";
 import { useCreateBoard } from "../hooks/useBoard";
 import { api } from "../lib/api";
 import { authClient } from "../lib/auth-client";
@@ -12,7 +13,7 @@ export function NewBoardPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [boardName, setBoardName] = useState("My Board");
-  const [boardType, setBoardType] = useState<"dev" | "ops">("dev");
+  const [boardTheme, setBoardTheme] = useState("");
   const [apiKeyDisplay, setApiKeyDisplay] = useState("");
   const [apiKeyId, setApiKeyId] = useState("");
   const [error, setError] = useState("");
@@ -20,7 +21,7 @@ export function NewBoardPage() {
 
   async function handleCreateBoard() {
     setError("");
-    await createBoard.mutateAsync({ name: boardName, type: boardType });
+    await createBoard.mutateAsync({ name: boardName, type: "dev", theme: boardTheme || undefined });
 
     const { data, error: keyError } = await authClient.apiKey.create({ name: "onboarding" });
     if (keyError || !data?.key) {
@@ -57,23 +58,15 @@ export function NewBoardPage() {
 
           {step === 0 && (
             <div className="space-y-4">
-              <label className="block text-xs font-medium text-content-tertiary uppercase tracking-wide">Board type</label>
-              <div className="flex gap-2">
-                {(["dev", "ops"] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setBoardType(t)}
-                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      boardType === t ? "bg-accent text-white" : "bg-surface-tertiary text-content-secondary hover:text-content-primary"
-                    }`}
-                  >
-                    {t === "dev" ? "Dev" : "Ops"}
-                    <span className="block text-xs font-normal mt-0.5 opacity-70">{t === "dev" ? "Git / PR workflow" : "No repo required"}</span>
-                  </button>
-                ))}
-              </div>
               <label className="block text-xs font-medium text-content-tertiary uppercase tracking-wide">Board name</label>
               <Input value={boardName} onChange={(e) => setBoardName(e.target.value)} />
+              <label className="block text-xs font-medium text-content-tertiary uppercase tracking-wide">Theme</label>
+              <Textarea
+                value={boardTheme}
+                onChange={(e) => setBoardTheme(e.target.value)}
+                placeholder="Describe the purpose of this sprint."
+                rows={3}
+              />
               {error && <p className="text-xs text-red-400">{error}</p>}
               <Button onClick={handleCreateBoard} disabled={createBoard.isPending || !boardName.trim()} className="w-full">
                 {createBoard.isPending ? "Creating..." : "Create Board"}

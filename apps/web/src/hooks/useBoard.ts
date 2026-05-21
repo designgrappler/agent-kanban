@@ -59,7 +59,7 @@ export function useCreateBoard() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: { name: string; type: "dev" | "ops"; description?: string }) => api.boards.create(input),
+    mutationFn: (input: { name: string; type: "dev" | "ops"; description?: string; theme?: string }) => api.boards.create(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["boards"] });
     },

@@ -27,7 +27,7 @@
 
 ### Track 10 — Frontend: update create board form
 
-- **Status:** IN PROGRESS — Bridge issued 2026-05-21
+- **Status:** DONE — Bandit PASS
 - **Specialist:** Skylar
 - **Branch:** `track/10-board-form-update`
 - **Goal:** Remove board type UI selector from `NewBoardPage.tsx`. Hardcode `type: "dev"` in the create payload. Add Theme textarea with placeholder "Describe the purpose of this sprint."
@@ -107,11 +107,7 @@
 **MANDATORY: Always use `scripts/worktree-add.sh`, never raw `git worktree add`.**
 See AGENTIC.md §4 for the full explanation. pnpm's hoisted `node_modules` are not present in raw worktrees — the script symlinks them.
 
-T10 is the active track — Bridge issued, Skylar should create the worktree and execute:
-```bash
-bash scripts/worktree-add.sh .worktrees/track-10 track/10-board-form-update
-```
-T14 is blocked until Tim signs off on the plan_url column (T15 schema decision).
+T10 is complete — DONE. T14 is blocked until Tim signs off on the plan_url column (T15 schema decision).
 
 ---
 
@@ -177,4 +173,4 @@ T14 is blocked until Tim signs off on the plan_url column (T15 schema decision).
 
 ---
 
-*Last updated: 2026-05-21 (T9/T11/T12/T13/T16 DONE — Bandit PASS all; T10 IN PROGRESS — Bridge issued 2026-05-21; T14/T15 still pending Tim's plan_url schema sign-off)*
+*Last updated: 2026-05-21 (T9/T10/T11/T12/T13/T16 DONE — Bandit PASS all; T14/T15 still pending Tim's plan_url schema sign-off)*

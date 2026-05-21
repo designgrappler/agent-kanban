@@ -108,7 +108,7 @@ export const api = {
   boards: {
     list: () => request<any[]>("GET", "/boards"),
     get: (id: string) => request<any>("GET", `/boards/${id}`),
-    create: (input: { name: string; type: "dev" | "ops"; description?: string }) => request<any>("POST", "/boards", input),
+    create: (input: { name: string; type: "dev" | "ops"; description?: string; theme?: string }) => request<any>("POST", "/boards", input),
     update: (id: string, body: { name?: string; description?: string; visibility?: "private" | "public"; labels?: any[] }) =>
       request<any>("PATCH", `/boards/${id}`, body),
     createLabel: (id: string, body: { name: string; color: string; description?: string }) => request<any>("POST", `/boards/${id}/labels`, body),
