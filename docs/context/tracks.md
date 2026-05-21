@@ -9,7 +9,7 @@
 ---
 
 ### Track 5 — Auth: allow `user` identity to create/edit/delete backlog tasks
-- **Status:** OPEN — **Tim security sign-off received 2026-05-20**
+- **Status:** DONE — Bandit PASS. Branch: `track/5-user-backlog-api`
 - **Specialist:** Skylar
 - **Branch:** `track/5-user-backlog-api`
 - **Goal:** Extend `ROUTE_RULES` in `auth.ts` so a browser session (`user` identity) can `POST /api/tasks`, `PATCH /api/tasks/:id`, and `DELETE /api/tasks/:id`. Add a status guard in `routes.ts` handlers so `user` identity can only mutate tasks with `status=todo`; any other status returns 403.
@@ -23,7 +23,7 @@
 ---
 
 ### Track 6 — Backend: backlog task creation without `assigned_to` / board-level default repo (B2)
-- **Status:** OPEN — **Tim product decision received 2026-05-20 (Option B + B2)**
+- **Status:** DONE — Bandit PASS 2026-05-20
 - **Specialist:** Skylar
 - **Branch:** `track/6-backlog-create` (builds on T5)
 - **Goal:** Allow user-created tasks to omit `assigned_to` (unassigned backlog item). Add a `default_repository_id` nullable column to the `boards` table. When a user creates a task without specifying `repository_id`, the backend looks up the board's `default_repository_id` and applies it automatically. No repo picker needed in the frontend.
@@ -60,7 +60,7 @@
 ---
 
 ### Track 8 — CLAUDE.md: update UI principles
-- **Status:** PENDING (can run in parallel with T5–T7)
+- **Status:** DONE — committed on `track/8-ui-principles` (e2fcc49)
 - **Specialist:** Skylar
 - **Branch:** `track/8-ui-principles`
 - **Goal:** Update CLAUDE.md UI Principles section to reflect the backlog-edit model. Remove blanket "read-only board" and "no task creation UI" rules. Add nuanced rules: todo column is human-editable; tasks in any other status are locked in the UI.
@@ -106,4 +106,4 @@ Known gaps carried to Sprint 5: user session cannot create tasks; UI is fully re
 
 ---
 
-*Last updated: 2026-05-20 (T5 → OPEN on Tim security sign-off; T6 → OPEN on Tim product decision Option B+B2, schema migration sign-off YES 2026-05-20; T7 B2 scope — no repo picker, board-level default repo — Peaches)*
+*Last updated: 2026-05-20 (T5 → DONE Bandit PASS; T8 → DONE Bandit PASS; T6 → DONE Bandit PASS 2026-05-20)*

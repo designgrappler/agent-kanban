@@ -156,10 +156,10 @@ The `createTask` handler also requires `assigned_to` (line 768 in `routes.ts`). 
 
 ## Definition of Done (Sprint 5)
 
-- [ ] T5: `user` identity can `POST /api/tasks`, `PATCH /api/tasks/:id` (todo only), `DELETE /api/tasks/:id` (todo only); all other statuses blocked with 403
-- [ ] T6: User-created tasks work without `assigned_to`; board-level `default_repository_id` is stored and applied automatically on task create (schema migration landed, `boardRepo` + `routes.ts` updated)
+- [x] T5: `user` identity can `POST /api/tasks`, `PATCH /api/tasks/:id` (todo only), `DELETE /api/tasks/:id` (todo only); all other statuses blocked with 403
+- [x] T6: User-created tasks work without `assigned_to`; board-level `default_repository_id` is stored and applied automatically on task create (schema migration landed, `boardRepo` + `routes.ts` updated)
 - [ ] T7: "Add task" button in `todo` column; edit/delete icons on `todo` cards; form creates/updates via API; other columns unchanged
-- [ ] T8: `CLAUDE.md` UI Principles updated to reflect backlog-edit model
+- [x] T8: `CLAUDE.md` UI Principles updated to reflect backlog-edit model
 - [ ] `pnpm build` exits zero
 - [ ] `pnpm tsc --noEmit` exits zero
 - [ ] Bandit QA: PASS
@@ -168,7 +168,7 @@ The `createTask` handler also requires `assigned_to` (line 768 in `routes.ts`). 
 
 ---
 
-*Last updated: 2026-05-20 (Sprint 5 plan drafted by Peaches — T5 + T6 unblocked, Bridges section added 2026-05-20; T6/T7 revised to B2 board-level default repo 2026-05-20)*
+*Last updated: 2026-05-20 (T5 DONE Bandit PASS; T8 DONE Bandit PASS; T6 DONE Bandit PASS 2026-05-20)*
 
 ---
 
@@ -196,6 +196,118 @@ The `createTask` handler also requires `assigned_to` (line 768 in `routes.ts`). 
    - `curl -X PATCH http://localhost:8787/api/tasks/<in-progress-id> -H "Cookie: <cookie>" -d '{"title":"Blocked"}' -H "Content-Type: application/json"` → expect 403
    - `curl -X DELETE http://localhost:8787/api/tasks/<in-progress-id> -H "Cookie: <cookie>"` → expect 403
 **Next Step:** Skylar — read `apps/web/server/auth.ts` and `apps/web/server/routes.ts` in full before touching anything. Implement the three changes above atomically in a single commit on `track/5-user-backlog-api`. Run verification. Then invoke Bandit for QA gate before merging.
+
+---
+
+### HANDOFF BRIDGE — T6
+**Topic:** Backend: backlog task creation without `assigned_to` / board-level default repo (B2)
+**Track:** T6
+**Specialist:** Skylar
+**Static DNA Check:** Aligned — Hono API on Cloudflare Workers, D1/SQLite schema migration, repo-layer pattern (boardRepo, taskRepo), auth via Better Auth. Schema-touching track; Tim sign-off on record (2026-05-20).
+**Dynamic DNA State:**
+- **Product Context:** User-created tasks must work without `assigned_to` (null = unassigned backlog item); boards gain a `default_repository_id` nullable column so Tim sets the repo once per board and all user-created tasks on that board inherit it automatically — no per-task repo picker needed.
+- **Current Plan:** Sprint 5 → Track 6 section in `docs/context/plan.md`
+- **Execution Files:**
+  - `apps/web/migrations/0022_board_default_repo.sql` — NEW FILE: `ALTER TABLE boards ADD COLUMN default_repository_id TEXT REFERENCES repositories(id);`
+  - `apps/web/server/routes.ts` — four targeted edits (see Next Step below)
+  - `apps/web/server/taskRepo.ts` — skip `assertAssignableWorkerAgent` and `isRuntimeAvailable` when `actorType === 'user'`; skip dev-board `repository_id` required guard when `actorType === 'user'`
+  - `apps/web/server/boardRepo.ts` — store and return `default_repository_id` on board reads and writes
+  - `packages/shared/src/types.ts` — add `default_repository_id?: string | null` to `Board` interface; add `default_repository_id?: string | null` to `CreateBoardInput`
+
+**Migration Safety:** Reversible — nullable column addition; drop column to roll back. Tim schema sign-off: YES (2026-05-20)
+**Security Review:** SCHEMA — Tim acceptance: YES (2026-05-20)
+**Worktree Setup:** `git worktree add .worktrees/track-6 track/6-backlog-create` — create this branch from `track/5-user-backlog-api` so T5 changes are the base.
+
+**Exact implementation steps for Skylar:**
+
+1. **Migration file** — create `apps/web/migrations/0022_board_default_repo.sql` with exactly:
+   ```sql
+   ALTER TABLE boards ADD COLUMN default_repository_id TEXT REFERENCES repositories(id);
+   ```
+
+2. **`packages/shared/src/types.ts`** — two additions:
+   - On `Board` interface: add `default_repository_id?: string | null;` after `share_slug`.
+   - On `CreateBoardInput` interface: add `default_repository_id?: string | null;` after `type`.
+
+3. **`apps/web/server/boardRepo.ts`** — four edits:
+   - `createBoard` signature: add `defaultRepositoryId?: string | null` parameter. Add it to the INSERT statement and bind list.
+   - `updateBoard` `updates` type: add `default_repository_id?: string | null`. Add a `if (updates.default_repository_id !== undefined)` block that pushes `"default_repository_id = ?"` and the value to the sets/values arrays. Allow explicit `null` (to unset).
+   - `POST /api/boards` in `routes.ts` will pass `body.default_repository_id` — `boardRepo.createBoard` must accept and persist it.
+   - No changes needed to `getBoard`, `listBoards`, `getDefaultBoard`, or `getBoardBySlug` — `SELECT *` already returns the new column once the migration runs.
+
+4. **`apps/web/server/routes.ts`** — four targeted edits:
+   a. `POST /api/tasks` (line ~768, T5 branch): The T5 line reads:
+      ```ts
+      if (!body.assigned_to && c.get("identityType") !== "user") throw new HTTPException(400, { message: "assigned_to is required" });
+      ```
+      Keep this line as-is (T5 already made `assigned_to` optional for users).
+      Add below it (before `resolveActor`):
+      ```ts
+      if (c.get("identityType") === "user" && !body.repository_id && body.board_id) {
+        const boardRow = await c.env.DB.prepare("SELECT default_repository_id FROM boards WHERE id = ?")
+          .bind(body.board_id)
+          .first<{ default_repository_id: string | null }>();
+        if (boardRow?.default_repository_id) {
+          body.repository_id = boardRow.default_repository_id;
+        }
+      }
+      ```
+   b. `POST /api/boards` (line ~959): Extend the body type to include `default_repository_id?: string`. Pass `body.default_repository_id` as the new parameter to `createBoard(...)`.
+   c. `PATCH /api/boards/:id` (line ~985): Extend the body type to include `default_repository_id?: string | null`. Pass through to `updateBoard(...)`.
+   d. **Remove dev-board `repository_id` required guard in `taskRepo.ts`** (see step 5) — no route change needed here; the guard is in `taskRepo.ts`.
+
+5. **`apps/web/server/taskRepo.ts`** — `createTask` function (lines ~48–140):
+   - At line ~59, the current guard:
+     ```ts
+     if (board.type === "dev" && !input.repository_id) {
+       throw new HTTPException(400, { message: "repository_id is required for dev board tasks" });
+     }
+     ```
+     Change to:
+     ```ts
+     if (board.type === "dev" && !input.repository_id && actorType !== "user") {
+       throw new HTTPException(400, { message: "repository_id is required for dev board tasks" });
+     }
+     ```
+   - At line ~88, the current guard:
+     ```ts
+     if (input.assigned_to) {
+       await assertAssignableWorkerAgent(db, ownerId, input.assigned_to, 400);
+     }
+     ```
+     Change to:
+     ```ts
+     if (input.assigned_to && actorType !== "user") {
+       await assertAssignableWorkerAgent(db, ownerId, input.assigned_to, 400);
+     }
+     ```
+     (User-created tasks have `assigned_to = null`; no agent lookup needed.)
+   - `isRuntimeAvailable` is only called inside `assertAssignableWorkerAgent`, so skipping that call is sufficient — no further change needed.
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — must all exit zero
+2. Apply migration to local D1: `npx wrangler d1 execute agent-kanban --local --file=apps/web/migrations/0022_board_default_repo.sql`
+3. Set a board's default repo via `curl`:
+   ```
+   curl -X PATCH http://localhost:8787/api/boards/<board-id> \
+     -H "Cookie: <session-cookie>" \
+     -H "Content-Type: application/json" \
+     -d '{"default_repository_id":"<repo-id>"}'
+   ```
+   → expect 200 with `default_repository_id` in the response body
+4. Create a user task without `repository_id` on that board:
+   ```
+   curl -X POST http://localhost:8787/api/tasks \
+     -H "Cookie: <session-cookie>" \
+     -H "Content-Type: application/json" \
+     -d '{"board_id":"<board-id>","title":"Test backlog item"}'
+   ```
+   → expect 201; response task should have `repository_id` matching the board's `default_repository_id`
+5. Create a user task without `assigned_to` — expect 201 with `assigned_to: null`
+6. Verify existing agent/machine `POST /api/tasks` still requires `assigned_to` and `repository_id` for dev boards (no regression)
+7. Invoke Bandit for QA gate before considering T6 done
+
+**Next Step:** Skylar — create branch `track/6-backlog-create` from `track/5-user-backlog-api`. Create the migration file first, then work through the five files in order: shared types → boardRepo → routes (boards) → routes (tasks) → taskRepo. Run verification. Invoke Bandit.
 
 ---
 
