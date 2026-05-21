@@ -1,88 +1,99 @@
-# AGENTIC DNA — agent-kanban (Local Companion Service)
+# AGENTIC DNA — agent-kanban
 
-This document contains the foundational constraints, identities, and protocols for the local agent-kanban fork. It is the root "Source of Truth" (Static DNA) and must be ingested by all agents before any actions are taken.
+Agent-first kanban board. React SPA + Hono API on Cloudflare Workers + D1. Agents claim tasks via CLI; humans review via browser.
+
+This document is the root source of truth for this project. All agents read it before any work begins. Edit via your primary agent — do not edit directly.
+
+---
+
+## 2. Tech Stack
+
+### Backend
+- **Runtime:** Cloudflare Workers
+- **Framework:** Hono
+- **Database:** Cloudflare D1 (SQLite) — local emulation via Wrangler at `.wrangler/state/v3/d1/`
+- **Transport:** HTTP + SSE
+
+### Frontend
+- **Framework:** React + Vite
+- **Styling:** Tailwind CSS
+- **Design System:** shadcn/ui
+
+### Quality & Automation
+- **Type Checking:** pnpm tsc --noEmit
+- **Build:** pnpm build
+- **Linting:** Biome
+
+---
+
+## 3. Project Team
+
+- **Tim (Conductor):** Vision & Approval.
+- **Claude (Orchestrator):** Coordinates specialists, no direct execution.
+- **Peaches (Lead Architect):** Context Owner. Zero-code. Plans and produces Handoff Bridges.
+- **Skylar (Fullstack Specialist):** Owns full-stack feature work — Hono API routes, React UI, D1 schema, CLI, Agent OS config layer.
+- **Bandit (QA):** Build verification and quality gate. Read-only.
+
+---
+
+## 7. Definition of Done
+
+A track is **Done** only when ALL of the following are true:
+
+- [ ] `pnpm build` exits with zero errors
+- [ ] All changes are within the declared track scope (no scope drift)
+- [ ] No `console.log`, `debugger`, or hardcoded secrets in the diff
+- [ ] `docs/context/plan.md` and `tracks.md` updated to reflect the completed track
+- [ ] Bandit has issued a **PASS** verdict
+- [ ] Tim has given final approval (for tracks touching auth, schema, or payments)
+
+---
+---
+
+# How Your Agents Operate
+
+> **For reference only.** The sections below describe how your agents behave.
 
 ---
 
 ## 1. DNA Taxonomy
-
 - **Static DNA:** Foundational tech, team roles, and protocol constraints (this file).
-- **Dynamic DNA:** High-churn task state, roadmap, and requirements (`docs/context/` plan, tracks).
+- **Dynamic DNA:** High-churn task state, roadmap, and requirements (`docs/context/`).
 
 ---
 
-## 2. Tech Stack (Static DNA)
+## 4. Worktree Protocol
 
-### Package Manager
-- **pnpm** (v10.33.0 lockfile baseline)
-
-### Application Stack
-- **Frontend:** React + Vite + Tailwind + shadcn/ui (`apps/web/src/`)
-- **Backend:** Hono API on Cloudflare Workers (`apps/web/server/`, `apps/web/worker/`)
-- **Database:** Cloudflare D1 (SQLite) — local emulation via Wrangler
-- **CLI:** TypeScript package at `packages/cli/`
-- **Shared types:** `packages/shared/` (must be built before web)
-
-### Commands
-- **Dev server:** `pnpm dev` (Vite + Wrangler together)
-- **Build:** `pnpm build` (builds shared then web)
-- **Shared-only build:** `pnpm --filter @agent-kanban/shared build`
-- **DB migrate (local):** `pnpm --filter @agent-kanban/web db:migrate`
-- **Tests:** `npx vitest run`
-
-### Local emulation
-- Wrangler `wrangler dev` — local D1 at `.wrangler/state/v3/d1/`
-- Env vars for local dev: `.dev.vars` (gitignored — never commit)
-
----
-
-## 3. Team Architecture
-
-### Org Chart
-- **Tim (Owner):** Vision & Approval.
-- **Peaches (Lead Architect):** Context Owner. Zero-code. Plans, Red Flag Analysis, Handoff Bridges.
-- **Skylar (Specialist):** Executes tracks. This sprint: agent-kanban code + Agent OS config layer.
-- **Bandit (QA):** Zero-write quality gate. Blocks bad merges.
-
-### Execution Chain
-```
-Tim → Peaches (plan + Bridge) → Skylar (execute) → Bandit (gate)
-```
-
-### Specialist Scope (this repo)
-
-| Scenario | Specialist |
-|---|---|
-| Agent OS config (CLAUDE.md, AGENTIC.md, .claude/) | skylar |
-| Sprint 4 code work (cloud stripping, OAuth, smoke test) | skylar |
-| Planning, context docs | peaches |
-| QA review | bandit |
-
----
-
-## 4. Branch Protocol
-
-Each Track gets a feature branch:
+Each track gets an isolated git worktree to prevent cross-track contamination:
 
 ```bash
-git checkout -b track/N-short-description
+# Open a new track
+git worktree add .worktrees/track-N track/N-short-description
+
+# Specialist works inside that worktree only
+# QA reviews the diff before merge back to main branch
+git worktree remove .worktrees/track-N
 ```
 
+- Worktrees live in `.worktrees/` (gitignored)
 - Branch naming: `track/N-short-description`
-- No parallel worktrees needed — T1→T4 are sequenced.
-- Never work directly on `main` for active tracks.
-- Branches are merged after Bandit issues APPROVED verdict.
+- Never work directly on the main branch when 2+ tracks are active in parallel
+- Worktree removed only after QA issues PASS verdict
 
 ---
 
 ## 5. Conductor Protocols
 
 ### Stability Rules
-- **Circuit Breaker:** 3 consecutive failures with the **same root cause** = STOP & escalate to Tim. Different error types reset the counter.
-- **Git Hygiene:** No commits unless directed by Tim. Use `git add` for staging only.
+- **Circuit Breaker:** 3 consecutive failures with the same root cause → STOP and escalate to the Conductor. Any single destructive or security-related failure triggers an immediate stop regardless of count.
+- **Git Hygiene:** No commits unless directed. Use `git add` for staging only.
+- **Sentinel Proof:** Never trust an agent's verbal summary. Verify with `git diff` or direct file reads.
 
 ### Handoff Logic
-All work requires a Handoff Bridge from Peaches before execution begins.
+- **Phase 1 (Verify):** Downstream specialist verifies upstream interface before any implementation begins.
+- **Phase 2 (Align):** Synchronize with `AGENTIC.md` and `tracks.md`.
+- **Phase 3 (Draft):** Architect drafts implementation plan.
+- **Phase 4 (Bridge):** Architect compresses Dynamic DNA into a Handoff Bridge for the Specialist.
 
 ---
 
@@ -91,36 +102,31 @@ All work requires a Handoff Bridge from Peaches before execution begins.
 All commits must follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
-feat(board): add column filtering
-fix(api): correct task claim race condition
-chore(deps): upgrade dependencies
-refactor(auth): extract token validation helper
+<type>(<scope>): <description>
+
+feat(auth): add OAuth redirect handler
+fix(items): correct rounding on split calculation
+chore(deps): upgrade dependency
+refactor(ui): extract component into standalone file
 ```
 
 **Types:** `feat` · `fix` · `chore` · `refactor` · `docs` · `style` · `perf` · `test`
+**Breaking changes:** append `!` after type and include `BREAKING CHANGE:` in the body.
 
 ---
 
-## 7. Definition of Done (DoD)
+## 8. Handoff Bridge Template
 
-A track is **Done** only when ALL of the following are true:
-
-- [ ] `pnpm build` exits with zero errors
-- [ ] All changes are within the declared track scope (no scope drift)
-- [ ] No `console.log`, `debugger`, or hardcoded secrets in the diff
-- [ ] `.dev.vars` is gitignored — never in the diff
-- [ ] `docs/context/plan.md` and `tracks.md` updated
-- [ ] Bandit has issued an **APPROVED** verdict
-- [ ] Tim has given final approval for tracks touching auth, schema, or payments
-
----
-
-## 8. Repo Relationship
-
-- **Source of truth for Agent OS skills/agents:** `~/Developer/agent-skills-private/` — do not modify from within this repo.
-- **This repo (`agent-kanban`):** Fork of `saltbo/agent-kanban`. Local companion Kanban service for Tim. All Sprint 4 code work lives here.
-- **Upstream:** `https://github.com/saltbo/agent-kanban` — pull upstream changes only when explicitly directed.
-
----
-
-*Last Refined: 2026-05-20 by Skylar (T1 onboarding)*
+```markdown
+### HANDOFF BRIDGE
+**Topic:** [Feature/Bug Name]
+**Track:** [ID from tracks.md]
+**Static DNA Check:** [Confirm alignment with AGENTIC.md tech/roles]
+**Dynamic DNA State:**
+- **Product Context:** [1-sentence summary of requirement]
+- **Current Plan:** [step in plan.md]
+- **Execution Files:** [list of files to modify]
+**Worktree Setup:** [git worktree command, or "N/A — single active track"]
+**Verification:** [specific command or URL]
+**Next Step:** [specific task for the Specialist]
+```

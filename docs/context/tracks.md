@@ -1,66 +1,109 @@
-# Agent Skills Private — Active Tracks
+# Agent Kanban — Active Tracks
 
-## Current Sprint Tracks (Sprint 4 — Local Agent-Kanban Companion Service)
+## Current Sprint: Sprint 5 — Human-Editable Backlog
 
-> **Cross-repo notice:** Code work for all four tracks happens in `~/Developer/agent-kanban/` (Tim's fork of `saltbo/agent-kanban`), NOT in `agent-skills-private`. This repo holds the plan only. The new repo uses `pnpm`; that is intentional.
+> **Working directory for all tracks:** `/Users/I826932/Developer/agent-kanban/`
+> **Specialist:** Skylar
+> **Worktree protocol:** T5–T7 have a dependency chain (T7 depends on T5+T6). T8 is independent. If T5 and T8 run in parallel, use worktrees per AGENTIC.md §4. Single sequential execution is the default path.
 
-### Track 1 — Fork & local clone
-- **Status:** DONE
-- **Specialist:** skylar (one-sprint scope expansion — Tim acceptance required at Bridge)
-- **Working directory:** `~/Developer/agent-kanban/`
-- **Branch:** `track/1-fork-and-clone`
-- **Goal:** Fork `saltbo/agent-kanban` to Tim's GitHub; clone locally; `pnpm install` succeeds; capture upstream SHA in `LOCAL_NOTES.md`; run `onboard-existing-project` skill inside the fork to generate a `CLAUDE.md` tailored to the agent-kanban stack (pnpm, Vite, Hono, React) — runs **after** pnpm install/build attempt. Then seed the fork with Sprint 4 context: create `~/Developer/agent-kanban/docs/context/plan.md` (Sprint 4 section only, copied from agent-skills-private) and `~/Developer/agent-kanban/docs/context/tracks.md` (current Sprint 4 tracks, copied from agent-skills-private). agent-skills-private keeps its own copies intact — this is a copy, not a move.
-- **Verification:** `.git/config` points to Tim's fork; `node_modules/` exists; baseline state recorded; `cat ~/Developer/agent-kanban/CLAUDE.md` confirms the file exists and references the Agent OS team; `cat ~/Developer/agent-kanban/docs/context/plan.md` shows Sprint 4 content; `cat ~/Developer/agent-kanban/docs/context/tracks.md` shows current tracks.
-- **Workspace handoff:** After Bandit approves T1, Tim closes the agent-skills-private workspace and opens `~/Developer/agent-kanban/` to continue the sprint.
+---
+
+### Track 5 — Auth: allow `user` identity to create/edit/delete backlog tasks
+- **Status:** OPEN — **Tim security sign-off received 2026-05-20**
+- **Specialist:** Skylar
+- **Branch:** `track/5-user-backlog-api`
+- **Goal:** Extend `ROUTE_RULES` in `auth.ts` so a browser session (`user` identity) can `POST /api/tasks`, `PATCH /api/tasks/:id`, and `DELETE /api/tasks/:id`. Add a status guard in `routes.ts` handlers so `user` identity can only mutate tasks with `status=todo`; any other status returns 403.
+- **Primary files:**
+  - `apps/web/server/auth.ts` — extend `ROUTE_RULES` allow lists
+  - `apps/web/server/routes.ts` — add `identityType === 'user'` status guards in PATCH and DELETE handlers; make `assigned_to` optional when identity is `user`
+- **Migration Safety:** Reversible
+- **Security Review:** **AUTH — Tim acceptance: YES (2026-05-20)**
+- **Depends on:** (unblocked)
+
+---
+
+### Track 6 — Backend: backlog task creation without `assigned_to` / board-level default repo (B2)
+- **Status:** OPEN — **Tim product decision received 2026-05-20 (Option B + B2)**
+- **Specialist:** Skylar
+- **Branch:** `track/6-backlog-create` (builds on T5)
+- **Goal:** Allow user-created tasks to omit `assigned_to` (unassigned backlog item). Add a `default_repository_id` nullable column to the `boards` table. When a user creates a task without specifying `repository_id`, the backend looks up the board's `default_repository_id` and applies it automatically. No repo picker needed in the frontend.
+- **Tim's product decision (Option B + B2):** Board-level default repo. If a board has a `default_repository_id` set, all user-created tasks on that board automatically inherit the repo. Tim sets this once per board (via `PATCH /api/boards/:id`) rather than selecting it per task.
+- **Schema migration:** `ALTER TABLE boards ADD COLUMN default_repository_id TEXT REFERENCES repositories(id)` (nullable). New migration file required in `apps/web/migrations/`.
+- **Primary files:**
+  - New migration file in `apps/web/migrations/` — add `default_repository_id` column to `boards`
+  - `apps/web/server/routes.ts` — (a) remove hard `assigned_to` 400 for user identity; (b) remove `dev board requires repository_id` guard for user identity; (c) in `POST /api/tasks` when `identityType === 'user'` and `repository_id` is absent, look up board's `default_repository_id` and use it; (d) accept optional `default_repository_id` in `POST /api/boards` and `PATCH /api/boards/:id`
+  - `apps/web/server/taskRepo.ts` — skip `assertAssignableWorkerAgent` and `isRuntimeAvailable` when `actorType === 'user'`
+  - `apps/web/server/boardRepo.ts` — store and return `default_repository_id` on board read/write
+  - `packages/shared/` — add `default_repository_id?: string | null` to board types; verify `CreateTaskInput.assigned_to` is typed as optional
+- **Migration Safety:** Reversible — drop the column to roll back. Tim schema sign-off: YES (2026-05-20)
+- **Security Review:** SCHEMA — Tim acceptance: YES (2026-05-20)
+- **Depends on:** T5 merged
+
+---
+
+### Track 7 — Frontend: backlog create/edit/delete UI
+- **Status:** PENDING
+- **Specialist:** Skylar
+- **Branch:** `track/7-backlog-ui` (builds on T5 + T6)
+- **Goal:** Add "Add task" button to `todo` column. Show edit/delete icons on `todo` cards only. New `BacklogTaskForm` component handles create and edit. Delete has a confirmation step.
+- **B2 — Board-level repo (Tim decision 2026-05-20):** No repo picker in the form. `repository_id` is managed at the board level (`default_repository_id`) and applied automatically by the backend. The form has exactly three fields: title (required), description (optional), labels/tags (optional).
+- **Primary files:**
+  - `apps/web/src/components/KanbanColumn.tsx` — "Add task" button (todo column only)
+  - `apps/web/src/components/TaskCard.tsx` — conditional edit/delete icons (todo only)
+  - `apps/web/src/components/BacklogTaskForm.tsx` — new form component (title, description, labels — no repo picker)
+  - `apps/web/src/lib/api.ts` — add `createTask`, `updateTask`, `deleteTask` if missing
+  - `apps/web/src/routes/BoardPage.tsx` — wire state + refresh
 - **Migration Safety:** Reversible
 - **Security Review:** N/A
+- **Depends on:** T5 + T6
 
-### Track 2 — Strip Cloudflare/cloud bindings
-- **Status:** DONE
-- **Specialist:** skylar
-- **Working directory:** `~/Developer/agent-kanban/`
-- **Branch:** `track/2-strip-cloud`
-- **Goal:** Remove or stub Analytics Engine, Mailchannels, Durable Objects, deploy-only Wrangler env blocks, daemon auto-spawn, cryptographic identity (if blocking). Keep local D1, Vite, Hono, React UI. `pnpm dev` starts without binding errors.
-- **Verification:** `pnpm dev` boots; `.wrangler/state/v3/d1/` populated; cloud bindings absent from `wrangler.toml`.
+---
+
+### Track 8 — CLAUDE.md: update UI principles
+- **Status:** PENDING (can run in parallel with T5–T7)
+- **Specialist:** Skylar
+- **Branch:** `track/8-ui-principles`
+- **Goal:** Update CLAUDE.md UI Principles section to reflect the backlog-edit model. Remove blanket "read-only board" and "no task creation UI" rules. Add nuanced rules: todo column is human-editable; tasks in any other status are locked in the UI.
+- **Primary files:**
+  - `CLAUDE.md` — UI Principles section only
 - **Migration Safety:** Reversible
 - **Security Review:** N/A
-
-### Track 3 — Configure GitHub OAuth for local dev
-- **Status:** DONE
-- **Specialist:** skylar
-- **Working directory:** `~/Developer/agent-kanban/`
-- **Branch:** `track/3-local-auth`
-- **Tim prerequisite (BLOCKING):** Tim creates a GitHub OAuth app at `https://github.com/settings/developers` with a `http://localhost:<port>` callback URL, then hands the Client ID and Client Secret to Skylar via a secure channel. Skylar cannot start T3 until this is done.
-- **Goal:** Configure real GitHub OAuth for local dev. Skylar drops `CLIENT_ID` / `CLIENT_SECRET` into a gitignored `.dev.vars`. Browser sign-in via GitHub completes the round-trip and lands on the board UI authenticated as the GitHub user. No stubbing, no auth bypass.
-- **Verification:** `.dev.vars` exists with the OAuth env vars and is gitignored; browser performs a real GitHub OAuth flow at `http://localhost:<port>` and shows the board UI logged in; API calls succeed (no 401); `LOCAL_NOTES.md` records OAuth setup notes (env var names, callback path) without secrets.
-- **Migration Safety:** Reversible
-- **Security Review:** **AUTH** — real OAuth configuration (lower risk than the prior stub approach). Tim's 2026-05-20 acceptance covers this updated scope.
-
-### Track 4 — Smoke test
-- **Status:** DONE
-- **Specialist:** skylar
-- **Working directory:** `~/Developer/agent-kanban/`
-- **Branch:** `track/4-smoke-test` (may roll into T3's branch if minimal)
-- **Goal:** Create a task; move it through all five columns (todo → in_progress → in_review → done → cancelled); confirm persistence across `pnpm dev` restart; `ak --help` runs.
-- **Verification:** All transitions succeed; task survives restart; `LOCAL_NOTES.md` has dated smoke test entry.
-- **Migration Safety:** Reversible
-- **Security Review:** N/A
+- **Depends on:** Tim's approval of the Sprint 5 plan
 
 ---
 
 ## Worktree Note
 
-AGENTIC.md §4 worktree protocol applies **inside `agent-skills-private`** for parallel tracks here. This sprint's code work is in a separate repo (`agent-kanban`), so worktrees are unnecessary — Skylar uses ordinary feature branches in the new clone. Tracks T1→T4 are sequenced (each depends on the prior), so parallel execution is not expected.
+If T5 and T8 run in parallel (they are independent):
+```bash
+git worktree add .worktrees/track-5 track/5-user-backlog-api
+git worktree add .worktrees/track-8 track/8-ui-principles
+```
+Otherwise, sequential execution T5 → T6 → T7 → T8 is fine.
 
 ---
 
-## Backlog
+## Backlog (deferred)
 
-- **CLI integration with Agent OS agents:** Register Skylar/Bandit/Peaches as board agents and have them update task status via `ak`. Deferred from Sprint 4.
+- **CLI daemon end-to-end:** Run `ak start` against the local board; register Skylar/Bandit/Peaches as board agents; have them update task status via `ak`. Deferred from Sprint 4.
+- **AI-assisted planning prompt:** A board-level "kick off" action that sends current `todo` tasks to an agent for planning/ordering and then locks them. Deferred — Sprint 5 lays the foundation.
 - **P2 — Domain Judgment → Capabilities rename:** Standardize section heading in `claude/agents/frontend.md`, `backend.md`, `fullstack.md`, `database.md`. Non-blocking.
 - **Expand agent types post-sprint:** Broaden agent templates beyond dev roles to cover content, design, research, ops.
-- **Non-code artifact reviewer:** A skill (not an agent) for completeness/traceability/format checks on document artifacts. Complements Critic.
-- **VS Code Sprint Tab Automation:** `/start-sprint` skill emits a tab config; companion VS Code extension fires `workbench.action.chat.open` once per OPEN track. Natural owner: Max.
+- **Non-code artifact reviewer:** A skill (not an agent) for completeness/traceability/format checks on document artifacts.
 
 ---
-*Last updated: 2026-05-20 (T1 extended: Skylar seeds `~/Developer/agent-kanban/docs/context/plan.md` and `tracks.md` with current Sprint 4 content so Tim can close agent-skills-private workspace after Bandit approves T1 and continue the sprint from the new repo; T3 scope changed earlier same day: stub/disable auth → configure real GitHub OAuth for local dev; Tim prerequisite — create OAuth app — now blocking T3 start)*
+
+## Archive: Sprint 4 Tracks (COMPLETE — 2026-05-20)
+
+| Track | Goal | Status |
+|---|---|---|
+| T1 | Fork & local clone | DONE |
+| T2 | Strip Cloudflare/cloud bindings | DONE |
+| T3 | Configure GitHub OAuth for local dev | DONE |
+| T4 | Smoke test (board renders, all 5 columns verified) | DONE |
+
+Known gaps carried to Sprint 5: user session cannot create tasks; UI is fully read-only; daemon not tested end-to-end.
+
+---
+
+*Last updated: 2026-05-20 (T5 → OPEN on Tim security sign-off; T6 → OPEN on Tim product decision Option B+B2, schema migration sign-off YES 2026-05-20; T7 B2 scope — no repo picker, board-level default repo — Peaches)*
