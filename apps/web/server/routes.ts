@@ -976,10 +976,10 @@ api.get("/api/boards/:id/stream", async (c) => {
 // ─── Boards ───
 
 api.post("/api/boards", async (c) => {
-  const body = await c.req.json<{ name: string; description?: string; type: string; default_repository_id?: string }>();
+  const body = await c.req.json<{ name: string; description?: string; type: string; default_repository_id?: string; theme?: string }>();
   if (!body.name) throw new HTTPException(400, { message: "name is required" });
   if (!isBoardType(body.type)) throw new HTTPException(400, { message: "type must be 'dev' or 'ops'" });
-  const board = await createBoard(c.env.DB, c.get("ownerId"), body.name, body.type, body.description, body.default_repository_id);
+  const board = await createBoard(c.env.DB, c.get("ownerId"), body.name, body.type, body.description, body.default_repository_id, body.theme);
   return c.json(board, 201);
 });
 
@@ -1008,6 +1008,7 @@ api.patch("/api/boards/:id", async (c) => {
     visibility?: "private" | "public";
     labels?: any[];
     default_repository_id?: string | null;
+    theme?: string | null;
   }>();
   const board = await updateBoard(c.env.DB, c.req.param("id"), body);
   if (!board) throw new HTTPException(404, { message: "Board not found" });

@@ -72,6 +72,22 @@
 
 ---
 
+### Track 9 — Schema + Backend: theme column on boards
+- **Status:** DONE — Bandit PASS
+- **Specialist:** Skylar
+- **Branch:** `track/9-board-theme-schema`
+- **Goal:** Add a nullable `theme TEXT` column to the `boards` table. Surface it through the shared `Board` type, `boardRepo.ts` create/update functions, and the `POST /api/boards` + `PATCH /api/boards/:id` route handlers.
+- **Primary files:**
+  - `apps/web/migrations/0023_board_theme.sql` — new migration
+  - `packages/shared/src/types.ts` — `theme?: string | null` on `Board`; `theme?: string` on `CreateBoardInput`
+  - `apps/web/server/boardRepo.ts` — `createBoard` + `updateBoard` accept and persist `theme`
+  - `apps/web/server/routes.ts` — `POST /api/boards` + `PATCH /api/boards/:id` accept and forward `theme`
+- **Migration Safety:** Reversible — drop the column to roll back.
+- **Security Review:** N/A
+- **Depends on:** T6 (board schema baseline)
+
+---
+
 ## Worktree Note
 
 If T5 and T8 run in parallel (they are independent):
@@ -106,4 +122,4 @@ Known gaps carried to Sprint 5: user session cannot create tasks; UI is fully re
 
 ---
 
-*Last updated: 2026-05-20 (T5 → DONE Bandit PASS; T8 → DONE Bandit PASS; T6 → DONE Bandit PASS; T7 → DONE Bandit PASS 2026-05-20)*
+*Last updated: 2026-05-20 (T5 → DONE Bandit PASS; T8 → DONE Bandit PASS; T6 → DONE Bandit PASS; T7 → DONE Bandit PASS 2026-05-20); 2026-05-21 (T9 → DONE Bandit PASS)*
