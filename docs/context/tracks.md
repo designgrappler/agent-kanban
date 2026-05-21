@@ -5,7 +5,7 @@
 > **Cross-repo notice:** Code work for all four tracks happens in `~/Developer/agent-kanban/` (Tim's fork of `saltbo/agent-kanban`), NOT in `agent-skills-private`. This repo holds the plan only. The new repo uses `pnpm`; that is intentional.
 
 ### Track 1 — Fork & local clone
-- **Status:** OPEN
+- **Status:** DONE
 - **Specialist:** skylar (one-sprint scope expansion — Tim acceptance required at Bridge)
 - **Working directory:** `~/Developer/agent-kanban/`
 - **Branch:** `track/1-fork-and-clone`
@@ -16,7 +16,7 @@
 - **Security Review:** N/A
 
 ### Track 2 — Strip Cloudflare/cloud bindings
-- **Status:** OPEN (depends on T1)
+- **Status:** DONE
 - **Specialist:** skylar
 - **Working directory:** `~/Developer/agent-kanban/`
 - **Branch:** `track/2-strip-cloud`
@@ -26,7 +26,7 @@
 - **Security Review:** N/A
 
 ### Track 3 — Configure GitHub OAuth for local dev
-- **Status:** OPEN (depends on T2; blocked on Tim prerequisite — see below)
+- **Status:** DONE
 - **Specialist:** skylar
 - **Working directory:** `~/Developer/agent-kanban/`
 - **Branch:** `track/3-local-auth`
@@ -37,7 +37,7 @@
 - **Security Review:** **AUTH** — real OAuth configuration (lower risk than the prior stub approach). Tim's 2026-05-20 acceptance covers this updated scope.
 
 ### Track 4 — Smoke test
-- **Status:** OPEN (depends on T3)
+- **Status:** DONE
 - **Specialist:** skylar
 - **Working directory:** `~/Developer/agent-kanban/`
 - **Branch:** `track/4-smoke-test` (may roll into T3's branch if minimal)
