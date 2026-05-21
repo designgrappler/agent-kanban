@@ -109,7 +109,7 @@
 
 
 
-- **Status:** PENDING — blocked on T15 landing (plan_url column must exist before workflow is meaningful)
+- **Status:** READY — T15 merged; unblocked 2026-05-21
 - **Specialist:** Skylar (Agent OS config only — no `apps/web/` or `packages/` source changes)
 - **Branch:** `track/14-planning-workflow`
 - **Goal:** Define AI-assisted planning behavior in Agent OS skill config. Silent task recognition, `ready-for-planning` label trigger with ~1-minute deferred prompt, explicit planning request path.
@@ -150,7 +150,7 @@ T10 is complete — DONE. T15 Bridge issued 2026-05-21 (Tim schema sign-off rece
 ## Open Questions (blocking)
 
 1. **T11 — Orphaned cancelled tasks:** Once the Cancelled column is removed, tasks cancelled by agents are invisible in the board UI. Is that acceptable, or should we add a "tombstone" view (e.g., TaskDetail accessible via direct link)? The current TaskDetail panel already shows task status — so cancelled tasks can be viewed if you know their ID.
-2. **T14/T15 — Plan document link:** Tim selected Option A (`plan_url TEXT` column on `tasks` table). Schema sign-off **RECEIVED 2026-05-21**. T15 Bridge issued. T14 unblocked once T15 merges.
+2. **T14/T15 — Plan document link:** Tim selected Option A (`plan_url TEXT` column on `tasks` table). Schema sign-off **RECEIVED 2026-05-21**. T15 Bridge issued. T15 merged 2026-05-21; T14 now unblocked.
 
 **Resolved (no longer blocking):**
 - T9 schema sign-off: APPROVED — Tim confirmed `ALTER TABLE boards ADD COLUMN theme TEXT` (2026-05-20)
