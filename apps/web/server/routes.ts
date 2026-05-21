@@ -767,6 +767,15 @@ api.post("/api/tasks", async (c) => {
   if (!body.title) throw new HTTPException(400, { message: "title is required" });
   if (!body.assigned_to && c.get("identityType") !== "user") throw new HTTPException(400, { message: "assigned_to is required" });
 
+  if (c.get("identityType") === "user" && !body.repository_id && body.board_id) {
+    const boardRow = await c.env.DB.prepare("SELECT default_repository_id FROM boards WHERE id = ?")
+      .bind(body.board_id)
+      .first<{ default_repository_id: string | null }>();
+    if (boardRow?.default_repository_id) {
+      body.repository_id = boardRow.default_repository_id;
+    }
+  }
+
   if (body.input !== undefined && body.input !== null && typeof body.input !== "object") {
     throw new HTTPException(400, { message: "input must be a JSON object or null" });
   }
@@ -967,10 +976,10 @@ api.get("/api/boards/:id/stream", async (c) => {
 // ─── Boards ───
 
 api.post("/api/boards", async (c) => {
-  const body = await c.req.json<{ name: string; description?: string; type: string }>();
+  const body = await c.req.json<{ name: string; description?: string; type: string; default_repository_id?: string }>();
   if (!body.name) throw new HTTPException(400, { message: "name is required" });
   if (!isBoardType(body.type)) throw new HTTPException(400, { message: "type must be 'dev' or 'ops'" });
-  const board = await createBoard(c.env.DB, c.get("ownerId"), body.name, body.type, body.description);
+  const board = await createBoard(c.env.DB, c.get("ownerId"), body.name, body.type, body.description, body.default_repository_id);
   return c.json(board, 201);
 });
 
@@ -993,7 +1002,13 @@ api.get("/api/boards/:id", async (c) => {
 });
 
 api.patch("/api/boards/:id", async (c) => {
-  const body = await c.req.json<{ name?: string; description?: string; visibility?: "private" | "public"; labels?: any[] }>();
+  const body = await c.req.json<{
+    name?: string;
+    description?: string;
+    visibility?: "private" | "public";
+    labels?: any[];
+    default_repository_id?: string | null;
+  }>();
   const board = await updateBoard(c.env.DB, c.req.param("id"), body);
   if (!board) throw new HTTPException(404, { message: "Board not found" });
   return c.json(board);

@@ -56,7 +56,7 @@ export async function createTask(
 
   if (!board) throw new HTTPException(400, { message: "No board exists. Create a board first." });
 
-  if (board.type === "dev" && !input.repository_id) {
+  if (board.type === "dev" && !input.repository_id && actorType !== "user") {
     throw new HTTPException(400, { message: "repository_id is required for dev board tasks" });
   }
   if (board.type === "ops" && input.repository_id) {
@@ -85,7 +85,7 @@ export async function createTask(
     if (!parent) throw new HTTPException(400, { message: "Parent task not found" });
   }
 
-  if (input.assigned_to) {
+  if (input.assigned_to && actorType !== "user") {
     await assertAssignableWorkerAgent(db, ownerId, input.assigned_to, 400);
   }
   await assertKnownLabels(db, board.id, input.labels);

@@ -17,6 +17,7 @@ export interface Board {
   labels: BoardLabel[];
   visibility: "private" | "public";
   share_slug: string | null;
+  default_repository_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -423,6 +424,7 @@ export interface CreateBoardInput {
   name: string;
   description?: string;
   type: BoardType;
+  default_repository_id?: string | null;
 }
 
 export interface CreateRepositoryInput {
