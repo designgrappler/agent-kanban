@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { Pencil, Trash2 } from "lucide-react";
 
 import { agentColor } from "../lib/agentIdentity";
 import { AgentIdenticon } from "./AgentIdenticon";
@@ -10,10 +11,12 @@ interface TaskCardProps {
   labels?: { name: string; color: string; description: string }[];
   onClick: () => void;
   onAgentClick?: (task: any) => void;
+  onEdit?: (task: any) => void;
+  onDelete?: (task: any) => void;
   isNew?: boolean;
 }
 
-export function TaskCard({ task, labels = [], onClick, onAgentClick, isNew }: TaskCardProps) {
+export function TaskCard({ task, labels = [], onClick, onAgentClick, onEdit, onDelete, isNew }: TaskCardProps) {
   const isAssigned = !!task.assigned_to;
   const isWorking = isAssigned && !!task.agent_public_key && task.status === "in_progress" && !task.glow_suppressed;
   const labelByName = new Map(labels.map((label) => [label.name, label]));
@@ -117,6 +120,37 @@ export function TaskCard({ task, labels = [], onClick, onAgentClick, isNew }: Ta
           >
             {task.repository_name}
           </Badge>
+        )}
+
+        {task.status === "todo" && (onEdit || onDelete) && (
+          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            {onEdit && (
+              <button
+                type="button"
+                aria-label="Edit task"
+                className="p-1 rounded text-content-tertiary hover:text-content-primary transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(task);
+                }}
+              >
+                <Pencil className="size-3.5" />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                aria-label="Delete task"
+                className="p-1 rounded text-content-tertiary hover:text-error transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(task);
+                }}
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

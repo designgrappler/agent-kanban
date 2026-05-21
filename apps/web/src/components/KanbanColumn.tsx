@@ -1,5 +1,5 @@
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
-import { Ban, CheckCircle2, Circle, Clock3, RotateCw } from "lucide-react";
+import { Ban, CheckCircle2, Circle, Clock3, Plus, RotateCw } from "lucide-react";
 import { TaskCard } from "./TaskCard";
 
 interface KanbanColumnProps {
@@ -7,6 +7,9 @@ interface KanbanColumnProps {
   labels?: { name: string; color: string; description: string }[];
   onTaskClick: (taskId: string) => void;
   onAgentClick?: (task: any) => void;
+  onAddTask?: () => void;
+  onEditTask?: (task: any) => void;
+  onDeleteTask?: (task: any) => void;
 }
 
 const COLUMN_ICONS: Record<string, typeof Circle> = {
@@ -17,7 +20,7 @@ const COLUMN_ICONS: Record<string, typeof Circle> = {
   cancelled: Ban,
 };
 
-export function KanbanColumn({ column, labels = [], onTaskClick, onAgentClick }: KanbanColumnProps) {
+export function KanbanColumn({ column, labels = [], onTaskClick, onAgentClick, onAddTask, onEditTask, onDeleteTask }: KanbanColumnProps) {
   const Icon = COLUMN_ICONS[column.status] ?? Circle;
 
   return (
@@ -43,11 +46,29 @@ export function KanbanColumn({ column, labels = [], onTaskClick, onAgentClick }:
                 transition={{ duration: 0.25, layout: { duration: 0.3 } }}
                 className="mb-2"
               >
-                <TaskCard task={task} labels={labels} onClick={() => onTaskClick(task.id)} onAgentClick={onAgentClick} />
+                <TaskCard
+                  task={task}
+                  labels={labels}
+                  onClick={() => onTaskClick(task.id)}
+                  onAgentClick={onAgentClick}
+                  onEdit={task.status === "todo" ? onEditTask : undefined}
+                  onDelete={task.status === "todo" ? onDeleteTask : undefined}
+                />
               </motion.div>
             ))}
           </AnimatePresence>
         </LayoutGroup>
+
+        {column.status === "todo" && onAddTask && (
+          <button
+            type="button"
+            onClick={onAddTask}
+            className="mt-1 w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-xs text-content-tertiary hover:text-content-secondary hover:bg-surface-secondary transition-colors"
+          >
+            <Plus className="size-3.5" />
+            Add task
+          </button>
+        )}
       </div>
     </div>
   );

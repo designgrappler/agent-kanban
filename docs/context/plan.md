@@ -158,7 +158,7 @@ The `createTask` handler also requires `assigned_to` (line 768 in `routes.ts`). 
 
 - [x] T5: `user` identity can `POST /api/tasks`, `PATCH /api/tasks/:id` (todo only), `DELETE /api/tasks/:id` (todo only); all other statuses blocked with 403
 - [x] T6: User-created tasks work without `assigned_to`; board-level `default_repository_id` is stored and applied automatically on task create (schema migration landed, `boardRepo` + `routes.ts` updated)
-- [ ] T7: "Add task" button in `todo` column; edit/delete icons on `todo` cards; form creates/updates via API; other columns unchanged
+- [x] T7: "Add task" button in `todo` column; edit/delete icons on `todo` cards; form creates/updates via API; other columns unchanged
 - [x] T8: `CLAUDE.md` UI Principles updated to reflect backlog-edit model
 - [ ] `pnpm build` exits zero
 - [ ] `pnpm tsc --noEmit` exits zero
@@ -168,7 +168,7 @@ The `createTask` handler also requires `assigned_to` (line 768 in `routes.ts`). 
 
 ---
 
-*Last updated: 2026-05-20 (T5 DONE Bandit PASS; T8 DONE Bandit PASS; T6 DONE Bandit PASS 2026-05-20)*
+*Last updated: 2026-05-20 (T5 DONE Bandit PASS; T8 DONE Bandit PASS; T6 DONE Bandit PASS; T7 DONE Bandit PASS 2026-05-20)*
 
 ---
 
@@ -308,6 +308,316 @@ The `createTask` handler also requires `assigned_to` (line 768 in `routes.ts`). 
 7. Invoke Bandit for QA gate before considering T6 done
 
 **Next Step:** Skylar — create branch `track/6-backlog-create` from `track/5-user-backlog-api`. Create the migration file first, then work through the five files in order: shared types → boardRepo → routes (boards) → routes (tasks) → taskRepo. Run verification. Invoke Bandit.
+
+---
+
+### HANDOFF BRIDGE — T7
+**Topic:** Frontend: backlog create/edit/delete UI
+**Track:** T7
+**Specialist:** Skylar
+**Static DNA Check:** Aligned — React + Vite + Tailwind + shadcn/ui frontend. Pure UI track; no schema migration, no auth changes. T5 + T6 are both DONE (Bandit PASS), so all backend API surface this track depends on is stable and merged into `track/6-backlog-create`.
+**Dynamic DNA State:**
+- **Product Context:** Tim needs to manage a product backlog from the browser: create tasks in the `todo` column, edit them inline, and delete them with a confirmation step — all scoped to `todo` status only; all other columns remain read-only.
+- **Current Plan:** Sprint 5 → Track 7 section in `docs/context/plan.md`
+- **Execution Files:**
+  - `apps/web/src/components/BacklogTaskForm.tsx` — NEW FILE (create/edit form, dialog-based)
+  - `apps/web/src/components/KanbanColumn.tsx` — add "Add task" button (todo column only) and thread `onAddTask` / `onEditTask` / `onDeleteTask` callbacks
+  - `apps/web/src/components/TaskCard.tsx` — add conditional edit/delete icon buttons (todo status only)
+  - `apps/web/src/routes/BoardPage.tsx` — add form state (`formMode`, `editingTask`), wire callbacks, pass `onRefresh`
+  - `apps/web/src/lib/api.ts` — NO CHANGES NEEDED (`api.tasks.create`, `api.tasks.update`, `api.tasks.delete` already exist)
+
+**Migration Safety:** Reversible — UI-only change, no schema or auth impact
+**Security Review:** N/A
+**Worktree Setup:** `git worktree add .worktrees/track-7 track/7-backlog-ui` — create this branch from `track/6-backlog-create` so T5+T6 changes are the base. T7 is the only active track.
+
+---
+
+#### Exact implementation steps for Skylar
+
+**Step 0 — Branch setup**
+
+```bash
+# From the working directory root
+git checkout track/6-backlog-create
+git checkout -b track/7-backlog-ui
+# Or via worktree:
+git worktree add .worktrees/track-7 -b track/7-backlog-ui track/6-backlog-create
+```
+
+---
+
+**Step 1 — `apps/web/src/lib/api.ts` — Confirm no changes needed**
+
+All three required methods already exist on `api.tasks`:
+- `api.tasks.create(input)` → `POST /api/tasks` — accepts `{ board_id, title, description?, labels? }`
+- `api.tasks.update(id, body)` → `PATCH /api/tasks/:id` — accepts `{ title?, description?, labels? }`
+- `api.tasks.delete(id)` → `DELETE /api/tasks/:id` — returns `{ ok: true }`
+
+No edits to `api.ts`. Read it to confirm, then proceed.
+
+---
+
+**Step 2 — `apps/web/src/components/BacklogTaskForm.tsx` — NEW FILE**
+
+Create a Dialog-based form component. Use the existing `BoardLabelDialogs.tsx` as a reference pattern (Dialog + DialogContent + DialogHeader + DialogFooter + Button). Use shadcn/ui primitives already installed: `Dialog`, `Input`, `Label`, `Button`, `Textarea` (for description), and a multi-select chip area for labels (no Select — render label chips as toggles using `LabelChip` + click-to-toggle pattern).
+
+**Props interface:**
+
+```ts
+interface BacklogTaskFormProps {
+  mode: "create" | "edit";
+  open: boolean;
+  boardId: string;
+  initialTask?: { id: string; title: string; description?: string | null; labels?: string[] } | null;
+  boardLabels: { name: string; color: string; description: string }[];
+  onClose: () => void;
+  onSuccess: () => void;   // calls refresh on the board
+}
+```
+
+**Form fields (exactly three — no repo picker per B2 decision):**
+1. `title` — `<Input>` — required. Disable submit if empty.
+2. `description` — `<Textarea>` — optional. A few rows tall.
+3. `labels` — optional. Render each board label as a clickable `LabelChip`. Clicking a chip toggles its inclusion. Selected labels are tracked in local state as `string[]`.
+
+**Behavior:**
+- `mode === "create"`: title/description/labels all start empty. On submit → `api.tasks.create({ board_id: boardId, title, description: description || undefined, labels: selectedLabels.length ? selectedLabels : undefined })`. On 201 → call `onSuccess()` then `onClose()`.
+- `mode === "edit"`: form pre-fills from `initialTask`. On submit → `api.tasks.update(initialTask.id, { title, description: description || null, labels: selectedLabels })`. On 200 → call `onSuccess()` then `onClose()`.
+- Error state: catch API errors, display error message inside the dialog (same pattern as `BoardLabelDialogs.tsx` — `{error && <p className="text-xs text-error">{error}</p>}`).
+- Pending state: disable submit button and show "Saving..." while the request is in-flight.
+- Reset form state when `open` transitions from false to true (use `useEffect([open])` — same pattern as `LabelFormDialog`).
+
+---
+
+**Step 3 — `apps/web/src/components/TaskCard.tsx` — conditional edit/delete icons**
+
+**New props to add:**
+
+```ts
+interface TaskCardProps {
+  task: any;
+  labels?: { name: string; color: string; description: string }[];
+  onClick: () => void;
+  onAgentClick?: (task: any) => void;
+  onEdit?: (task: any) => void;       // NEW — only provided for todo tasks
+  onDelete?: (task: any) => void;     // NEW — only provided for todo tasks
+  isNew?: boolean;
+}
+```
+
+**Where to render the icons:**
+
+In the bottom row (`<div className="mt-2 flex items-center justify-between gap-2">`), add a small icon group on the right side — only when `task.status === 'todo'` AND the `onEdit` / `onDelete` props are present. Use lucide-react icons: `Pencil` (edit) and `Trash2` (delete). Icons should be small (`size-3.5`), styled as ghost icon-buttons, and must call `event.stopPropagation()` before invoking the callback to prevent the card click from firing.
+
+```tsx
+{task.status === 'todo' && (onEdit || onDelete) && (
+  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+    {onEdit && (
+      <button
+        type="button"
+        aria-label="Edit task"
+        className="p-1 rounded text-content-tertiary hover:text-content-primary transition-colors"
+        onClick={(e) => { e.stopPropagation(); onEdit(task); }}
+      >
+        <Pencil className="size-3.5" />
+      </button>
+    )}
+    {onDelete && (
+      <button
+        type="button"
+        aria-label="Delete task"
+        className="p-1 rounded text-content-tertiary hover:text-error transition-colors"
+        onClick={(e) => { e.stopPropagation(); onDelete(task); }}
+      >
+        <Trash2 className="size-3.5" />
+      </button>
+    )}
+  </div>
+)}
+```
+
+Import `Pencil` and `Trash2` from `lucide-react`.
+
+---
+
+**Step 4 — `apps/web/src/components/KanbanColumn.tsx` — "Add task" button + callback props**
+
+**New props:**
+
+```ts
+interface KanbanColumnProps {
+  column: any;
+  labels?: { name: string; color: string; description: string }[];
+  onTaskClick: (taskId: string) => void;
+  onAgentClick?: (task: any) => void;
+  onAddTask?: () => void;        // NEW — only provided for todo column
+  onEditTask?: (task: any) => void;   // NEW — passed through to TaskCard
+  onDeleteTask?: (task: any) => void; // NEW — passed through to TaskCard
+}
+```
+
+**"Add task" button:**
+
+Render after the card list (inside the scroll container, below the `AnimatePresence` block) when `column.status === 'todo'` AND `onAddTask` is provided:
+
+```tsx
+{column.status === 'todo' && onAddTask && (
+  <button
+    type="button"
+    onClick={onAddTask}
+    className="mt-1 w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-xs text-content-tertiary hover:text-content-secondary hover:bg-surface-secondary transition-colors"
+  >
+    <Plus className="size-3.5" />
+    Add task
+  </button>
+)}
+```
+
+Import `Plus` from `lucide-react`.
+
+**Pass callbacks to `TaskCard`:**
+
+```tsx
+<TaskCard
+  task={task}
+  labels={labels}
+  onClick={() => onTaskClick(task.id)}
+  onAgentClick={onAgentClick}
+  onEdit={task.status === 'todo' ? onEditTask : undefined}
+  onDelete={task.status === 'todo' ? onDeleteTask : undefined}
+/>
+```
+
+---
+
+**Step 5 — `apps/web/src/routes/BoardPage.tsx` — state + delete confirmation + wire callbacks**
+
+**New state:**
+
+```ts
+const [formOpen, setFormOpen] = useState(false);
+const [formMode, setFormMode] = useState<"create" | "edit">("create");
+const [editingTask, setEditingTask] = useState<any | null>(null);
+const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+const [deletePending, setDeletePending] = useState(false);
+const [deleteError, setDeleteError] = useState<string | null>(null);
+```
+
+**Handlers:**
+
+```ts
+function handleAddTask() {
+  setEditingTask(null);
+  setFormMode("create");
+  setFormOpen(true);
+}
+
+function handleEditTask(task: any) {
+  setEditingTask(task);
+  setFormMode("edit");
+  setFormOpen(true);
+}
+
+function handleDeleteTask(task: any) {
+  setDeleteTarget(task);
+  setDeleteError(null);
+  setDeleteConfirmOpen(true);
+}
+
+async function confirmDelete() {
+  if (!deleteTarget) return;
+  setDeletePending(true);
+  setDeleteError(null);
+  try {
+    await api.tasks.delete(deleteTarget.id);
+    setDeleteConfirmOpen(false);
+    setDeleteTarget(null);
+    refresh();
+  } catch (err: any) {
+    setDeleteError(err.message ?? "Delete failed");
+  } finally {
+    setDeletePending(false);
+  }
+}
+```
+
+**Wire `KanbanColumn` — both desktop and mobile column renders:**
+
+```tsx
+<KanbanColumn
+  key={col.status}
+  column={col}
+  labels={board.labels ?? []}
+  onTaskClick={setSelectedTask}
+  onAgentClick={setChatTask}
+  onAddTask={col.status === 'todo' ? handleAddTask : undefined}
+  onEditTask={handleEditTask}
+  onDeleteTask={handleDeleteTask}
+/>
+```
+
+Apply the same props to both the desktop grid and the mobile single-column renders.
+
+**Import and render `BacklogTaskForm`** (after the `AgentAvatarOverlay` line, alongside other overlays):
+
+```tsx
+import { BacklogTaskForm } from "../components/BacklogTaskForm";
+// ...
+{board && (
+  <BacklogTaskForm
+    mode={formMode}
+    open={formOpen}
+    boardId={board.id}
+    initialTask={editingTask}
+    boardLabels={board.labels ?? []}
+    onClose={() => setFormOpen(false)}
+    onSuccess={() => { setFormOpen(false); refresh(); }}
+  />
+)}
+```
+
+**Delete confirmation dialog** — use the existing `DeleteLabelDialog` pattern from `BoardLabelDialogs.tsx` as reference. Render a small Dialog with a destructive confirm button:
+
+```tsx
+<Dialog open={deleteConfirmOpen} onOpenChange={(open) => !open && setDeleteConfirmOpen(false)}>
+  <DialogContent className="sm:max-w-sm" showCloseButton={false}>
+    <DialogHeader>
+      <DialogTitle>Delete task</DialogTitle>
+      <DialogDescription>
+        Delete "{deleteTarget?.title}"? This cannot be undone.
+      </DialogDescription>
+    </DialogHeader>
+    {deleteError && <p className="text-xs text-error">{deleteError}</p>}
+    <DialogFooter className="flex-col sm:flex-row">
+      <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+      <Button variant="destructive" onClick={confirmDelete} disabled={deletePending}>
+        {deletePending ? "Deleting..." : "Delete"}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+```
+
+Import `Dialog`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `Button` from their existing shadcn/ui paths (already used elsewhere in the codebase).
+
+---
+
+**Verification:**
+
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — must all exit zero
+2. `pnpm dev` — open the board in the browser
+3. Todo column shows "Add task" button at the bottom; no other column shows it
+4. Clicking "Add task" opens the form in create mode with empty fields
+5. Fill title (required) → submit → task appears in todo column; form closes
+6. Submit with empty title → button stays disabled (no API call)
+7. Click edit icon on a todo card → form opens pre-filled; save → card updates
+8. Click delete icon on a todo card → confirmation dialog appears; confirm → card disappears
+9. Edit/delete icons do NOT appear on cards in `in_progress`, `in_review`, `done`, or `cancelled` columns
+10. Existing card click (opens `TaskDetail`) still works — `stopPropagation` on edit/delete icons prevents interference
+11. Invoke Bandit for QA gate
+
+**Next Step:** Skylar — create branch `track/7-backlog-ui` from `track/6-backlog-create`. Work through the five files in order: confirm `api.ts` (no changes) → create `BacklogTaskForm.tsx` → patch `TaskCard.tsx` → patch `KanbanColumn.tsx` → patch `BoardPage.tsx`. Run the verification checklist. Invoke Bandit.
 
 ---
 

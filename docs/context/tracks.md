@@ -42,9 +42,9 @@
 ---
 
 ### Track 7 — Frontend: backlog create/edit/delete UI
-- **Status:** PENDING
+- **Status:** DONE — Bandit PASS 2026-05-20
 - **Specialist:** Skylar
-- **Branch:** `track/7-backlog-ui` (builds on T5 + T6)
+- **Branch:** `track/7-backlog-ui` (builds on T5 + T6, created from `track/6-backlog-create`)
 - **Goal:** Add "Add task" button to `todo` column. Show edit/delete icons on `todo` cards only. New `BacklogTaskForm` component handles create and edit. Delete has a confirmation step.
 - **B2 — Board-level repo (Tim decision 2026-05-20):** No repo picker in the form. `repository_id` is managed at the board level (`default_repository_id`) and applied automatically by the backend. The form has exactly three fields: title (required), description (optional), labels/tags (optional).
 - **Primary files:**
@@ -106,4 +106,4 @@ Known gaps carried to Sprint 5: user session cannot create tasks; UI is fully re
 
 ---
 
-*Last updated: 2026-05-20 (T5 → DONE Bandit PASS; T8 → DONE Bandit PASS; T6 → DONE Bandit PASS 2026-05-20)*
+*Last updated: 2026-05-20 (T5 → DONE Bandit PASS; T8 → DONE Bandit PASS; T6 → DONE Bandit PASS; T7 → DONE Bandit PASS 2026-05-20)*
