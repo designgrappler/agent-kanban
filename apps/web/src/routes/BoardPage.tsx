@@ -137,6 +137,7 @@ export function BoardPage() {
   return (
     <div className="h-screen overflow-hidden bg-surface-primary flex flex-col">
       <Header />
+      {board.theme && <p className="text-xs text-content-tertiary px-5 pt-2 pb-0 mt-0.5">{board.theme}</p>}
       <FilterBar
         repositories={repositories}
         labels={board.labels ?? []}
