@@ -19,6 +19,7 @@
 | T13 | Backend: seed `ready-for-planning` label on board creation | DONE — Bandit PASS |
 | T14 | Agent OS: AI-assisted planning workflow | IN PROGRESS — Bridge issued 2026-05-21 |
 | T15 | Backend: `plan_url` column on tasks | IN PROGRESS — Bridge issued 2026-05-21 |
+| T17 | Docs: AGENTIC.md board-as-authoritative-ledger protocol | DONE — Bandit PASS |
 
 ---
 

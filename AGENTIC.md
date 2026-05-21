@@ -44,6 +44,7 @@ A track is **Done** only when ALL of the following are true:
 - [ ] All changes are within the declared track scope (no scope drift)
 - [ ] No `console.log`, `debugger`, or hardcoded secrets in the diff
 - [ ] `docs/context/plan.md` and `tracks.md` updated to reflect the completed track
+- [ ] Board task for this track was created before the Handoff Bridge was issued (or retroactively before work began)
 - [ ] Bandit has issued a **PASS** verdict
 - [ ] Tim has given final approval (for tracks touching auth, schema, or payments)
 
@@ -90,10 +91,21 @@ git worktree remove .worktrees/track-N
 - **Sentinel Proof:** Never trust an agent's verbal summary. Verify with `git diff` or direct file reads.
 
 ### Handoff Logic
+- **Phase 0 (Board Setup):** Before issuing any Handoff Bridge, create a board task for the track via `POST /api/boards/:id/tasks`. Discover the active board ID via `ak get board -o json`. Title format: `T<N>: <track short description>`. Description: one sentence from the track goal. Status: `todo`. The board is the authoritative source of truth — a track without a board task does not exist.
 - **Phase 1 (Verify):** Downstream specialist verifies upstream interface before any implementation begins.
 - **Phase 2 (Align):** Synchronize with `AGENTIC.md` and `tracks.md`.
 - **Phase 3 (Draft):** Architect drafts implementation plan.
 - **Phase 4 (Bridge):** Architect compresses Dynamic DNA into a Handoff Bridge for the Specialist.
+
+### Sprint Planning Protocol
+
+When Peaches opens a new sprint:
+
+1. **Board first.** For each track in the sprint, call `POST /api/boards/:id/tasks` to create a board task before issuing any Handoff Bridges. Discover the board ID via `ak get board -o json`. Title: `T<N>: <short description>`. Description: one sentence stating the track goal. Status: `todo`.
+2. **1:1 mapping.** Every track maps to exactly one board task. No track exists only in `tracks.md`. No board task exists without a corresponding `tracks.md` entry.
+3. **Board is authoritative.** The kanban board is the sprint's source of truth for work status. `plan.md` and `tracks.md` remain planning artifacts but are subordinate to the board.
+4. **Retroactive fix rule.** If a Handoff Bridge is issued without a board task (due to error or interruption), the board task must be created before Skylar begins work — not after.
+5. **API auth.** Board task creation uses the existing machine token (`AK_TOKEN`) — the same credential used by the daemon. No browser session needed.
 
 ---
 

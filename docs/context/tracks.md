@@ -146,6 +146,22 @@ T10 is complete — DONE. T15 Bridge issued 2026-05-21 (Tim schema sign-off rece
 
 ---
 
+### Track 17 — Docs: AGENTIC.md board-as-authoritative-ledger protocol
+
+- **Status:** DONE — Bandit PASS
+- **Specialist:** Skylar
+- **Branch:** `track/17-agentic-board-protocol`
+- **Goal:** Add "Board First" protocol to AGENTIC.md. Three edits: (1) Phase 0 (Board Setup) in §5 Handoff Logic — Peaches must create board tasks via API before any Handoff Bridge; (2) Sprint Planning Protocol subsection with 5-point rule: board-first, 1:1 mapping, board authoritative, retroactive fix, API auth; (3) DoD checkbox confirming board task was created.
+- **Primary files:**
+  - `AGENTIC.md` — three targeted edits (Phase 0, Sprint Planning Protocol, DoD checkbox)
+  - `docs/context/tracks.md` — add this entry
+  - `docs/context/plan.md` — add T17 row to Sprint 6 table
+- **Migration Safety:** N/A — doc-only change
+- **Security Review:** N/A
+- **Depends on:** (unblocked — Sprint 6 complete)
+
+---
+
 ## Open Questions (blocking)
 
 1. **T11 — Orphaned cancelled tasks:** Once the Cancelled column is removed, tasks cancelled by agents are invisible in the board UI. Is that acceptable, or should we add a "tombstone" view (e.g., TaskDetail accessible via direct link)? The current TaskDetail panel already shows task status — so cancelled tasks can be viewed if you know their ID.
@@ -192,4 +208,4 @@ T10 is complete — DONE. T15 Bridge issued 2026-05-21 (Tim schema sign-off rece
 
 ---
 
-*Last updated: 2026-05-21 (T9/T10/T11/T12/T13/T14/T15/T16 DONE — Bandit PASS all)*
+*Last updated: 2026-05-20 (T9/T10/T11/T12/T13/T14/T15/T16/T17 DONE — Bandit PASS all)*
