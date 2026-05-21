@@ -48,6 +48,8 @@ export interface Task {
   created_from: string | null;
   scheduled_at: string | null;
   position: number;
+  sprint_id: string | null;
+  track_number: number | null;
   created_at: string;
   updated_at: string;
   blocked?: boolean;
@@ -55,6 +57,31 @@ export interface Task {
   agent_name?: string;
   agent_public_key?: string | null;
   board_type?: BoardType;
+}
+
+// ─── Sprint ───
+
+export type SprintStatus = "planning" | "active" | "closed";
+
+export const SPRINT_STATUSES: readonly SprintStatus[] = ["planning", "active", "closed"] as const;
+
+export function isSprintStatus(value: string): value is SprintStatus {
+  return SPRINT_STATUSES.includes(value as SprintStatus);
+}
+
+export interface Sprint {
+  id: string;
+  board_id: string;
+  number: number;
+  theme: string;
+  status: SprintStatus;
+  opened_at: string;
+  closed_at: string | null;
+  created_by: string | null;
+}
+
+export interface CreateSprintInput {
+  theme: string;
 }
 
 export interface TaskWithMeta extends Task {

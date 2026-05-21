@@ -5,6 +5,7 @@ import {
   type CreateSubagentInput,
   findInvalidSkillRef,
   isBoardType,
+  isSprintStatus,
   isValidAgentRole,
   isValidUsername,
   type MachineRuntime,
@@ -59,6 +60,15 @@ import { getEmail, getInbox } from "./mailsService";
 import { createMessage, listMessages } from "./messageRepo";
 import { metricsMiddleware } from "./metrics";
 import { createRepository, deleteRepository, getRepository, listRepositories } from "./repositoryRepo";
+import {
+  assertBoardOwner as assertBoardOwnerForSprint,
+  assertSprintOwner,
+  createSprint,
+  getActiveSprint,
+  getSprint,
+  listSprintsByBoard,
+  transitionSprint,
+} from "./sprintRepo";
 import { createSSEResponse } from "./sse";
 import { getSystemStats } from "./statsRepo";
 import { createSubagent, deleteSubagent, getSubagent, listSubagents, updateSubagent } from "./subagentRepo";
@@ -1092,6 +1102,64 @@ api.delete("/api/repositories/:id", async (c) => {
   if (repo.owner_id !== ownerId) throw new HTTPException(403, { message: "Forbidden" });
   await deleteRepository(c.env.DB, c.req.param("id"));
   return c.json({ ok: true });
+});
+
+// ─── Sprints ───
+
+api.post("/api/boards/:id/sprints", async (c) => {
+  const ownerId = c.get("ownerId");
+  const boardId = c.req.param("id");
+  await assertBoardOwnerForSprint(c.env.DB, boardId, ownerId);
+  const body = await c.req.json<{ theme?: unknown }>();
+  if (typeof body.theme !== "string" || body.theme.trim().length === 0) {
+    throw new HTTPException(400, { message: "theme is required" });
+  }
+  const { actorId } = resolveActor(c);
+  const sprint = await createSprint(c.env.DB, { boardId, theme: body.theme.trim(), createdBy: actorId });
+  return c.json(sprint, 201);
+});
+
+api.get("/api/boards/:id/sprints", async (c) => {
+  const ownerId = c.get("ownerId");
+  const boardId = c.req.param("id");
+  await assertBoardOwnerForSprint(c.env.DB, boardId, ownerId);
+  const status = c.req.query("status");
+  if (status !== undefined && !isSprintStatus(status)) {
+    throw new HTTPException(400, { message: "Invalid status filter" });
+  }
+  const sprints = await listSprintsByBoard(c.env.DB, boardId, status ? { status } : undefined);
+  return c.json(sprints);
+});
+
+api.get("/api/boards/:id/sprints/active", async (c) => {
+  const ownerId = c.get("ownerId");
+  const boardId = c.req.param("id");
+  await assertBoardOwnerForSprint(c.env.DB, boardId, ownerId);
+  const sprint = await getActiveSprint(c.env.DB, boardId);
+  if (!sprint) throw new HTTPException(404, { message: "No active sprint" });
+  return c.json(sprint);
+});
+
+api.get("/api/sprints/:id", async (c) => {
+  const ownerId = c.get("ownerId");
+  const sprintId = c.req.param("id");
+  await assertSprintOwner(c.env.DB, sprintId, ownerId);
+  const sprint = await getSprint(c.env.DB, sprintId);
+  if (!sprint) throw new HTTPException(404, { message: "Sprint not found" });
+  return c.json(sprint);
+});
+
+api.patch("/api/sprints/:id", async (c) => {
+  const ownerId = c.get("ownerId");
+  const sprintId = c.req.param("id");
+  await assertSprintOwner(c.env.DB, sprintId, ownerId);
+  const body = await c.req.json<{ status?: unknown }>();
+  if (typeof body.status !== "string" || !isSprintStatus(body.status)) {
+    throw new HTTPException(400, { message: "status must be one of: planning, active, closed" });
+  }
+  const sprint = await transitionSprint(c.env.DB, sprintId, body.status);
+  if (!sprint) throw new HTTPException(404, { message: "Sprint not found" });
+  return c.json(sprint);
 });
 
 // ─── GPG Keys ───
