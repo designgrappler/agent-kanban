@@ -765,7 +765,7 @@ api.use("/api/tasks/:id", async (c, next) => {
 api.post("/api/tasks", async (c) => {
   const body = await c.req.json();
   if (!body.title) throw new HTTPException(400, { message: "title is required" });
-  if (!body.assigned_to) throw new HTTPException(400, { message: "assigned_to is required" });
+  if (!body.assigned_to && c.get("identityType") !== "user") throw new HTTPException(400, { message: "assigned_to is required" });
 
   if (body.input !== undefined && body.input !== null && typeof body.input !== "object") {
     throw new HTTPException(400, { message: "input must be a JSON object or null" });
@@ -812,6 +812,13 @@ api.patch("/api/tasks/:id", async (c) => {
     if (existing.created_by !== c.get("agentId")) throw new HTTPException(403, { message: "Workers can only update tasks they created" });
   }
 
+  // Users can only update tasks that are still in todo status
+  if (c.get("identityType") === "user") {
+    const existing = await c.env.DB.prepare("SELECT status FROM tasks WHERE id = ?").bind(c.req.param("id")).first<{ status: string }>();
+    if (!existing) throw new HTTPException(404, { message: "Task not found" });
+    if (existing.status !== "todo") throw new HTTPException(403, { message: "Users can only update tasks in todo status" });
+  }
+
   const task = await updateTask(c.env.DB, c.req.param("id"), body);
   if (!task) throw new HTTPException(404, { message: "Task not found" });
   return c.json(task);
@@ -823,6 +830,13 @@ api.delete("/api/tasks/:id", async (c) => {
     const existing = await c.env.DB.prepare("SELECT created_by FROM tasks WHERE id = ?").bind(c.req.param("id")).first<{ created_by: string }>();
     if (!existing) throw new HTTPException(404, { message: "Task not found" });
     if (existing.created_by !== c.get("agentId")) throw new HTTPException(403, { message: "Workers can only delete tasks they created" });
+  }
+
+  // Users can only delete tasks that are still in todo status
+  if (c.get("identityType") === "user") {
+    const existing = await c.env.DB.prepare("SELECT status FROM tasks WHERE id = ?").bind(c.req.param("id")).first<{ status: string }>();
+    if (!existing) throw new HTTPException(404, { message: "Task not found" });
+    if (existing.status !== "todo") throw new HTTPException(403, { message: "Users can only delete tasks in todo status" });
   }
 
   const deleted = await deleteTask(c.env.DB, c.req.param("id"));
