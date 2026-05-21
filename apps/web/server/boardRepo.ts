@@ -41,14 +41,15 @@ export async function createBoard(
   type: BoardType,
   description?: string,
   defaultRepositoryId?: string | null,
+  theme?: string | null,
 ): Promise<Board> {
   const id = newId();
   const now = new Date().toISOString();
   await db
     .prepare(
-      "INSERT INTO boards (id, owner_id, name, description, type, default_repository_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO boards (id, owner_id, name, description, type, default_repository_id, theme, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
-    .bind(id, ownerId, name, description || null, type, defaultRepositoryId || null, now, now)
+    .bind(id, ownerId, name, description || null, type, defaultRepositoryId || null, theme || null, now, now)
     .run();
 
   await seedBuiltinAgents(db, ownerId);
@@ -105,7 +106,14 @@ export async function getDefaultBoard(db: D1, ownerId: string): Promise<Board | 
 export async function updateBoard(
   db: D1,
   boardId: string,
-  updates: { name?: string; description?: string; visibility?: "private" | "public"; labels?: BoardLabel[]; default_repository_id?: string | null },
+  updates: {
+    name?: string;
+    description?: string;
+    visibility?: "private" | "public";
+    labels?: BoardLabel[];
+    default_repository_id?: string | null;
+    theme?: string | null;
+  },
 ): Promise<Board | null> {
   const sets: string[] = [];
   const values: unknown[] = [];
@@ -135,6 +143,10 @@ export async function updateBoard(
   if (updates.default_repository_id !== undefined) {
     sets.push("default_repository_id = ?");
     values.push(updates.default_repository_id ?? null);
+  }
+  if (updates.theme !== undefined) {
+    sets.push("theme = ?");
+    values.push(updates.theme ?? null);
   }
   if (sets.length === 0) {
     const board = await db.prepare("SELECT * FROM boards WHERE id = ?").bind(boardId).first<Board>();
