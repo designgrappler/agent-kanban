@@ -17,7 +17,7 @@
 | T11 | Frontend: remove Cancelled column from board view | DONE — Bandit PASS |
 | T12 | Frontend: edit icon in TaskDetail for todo tasks | DONE — Bandit PASS |
 | T13 | Backend: seed `ready-for-planning` label on board creation | DONE — Bandit PASS |
-| T14 | Agent OS: AI-assisted planning workflow | PENDING — blocked on T15 (plan_url schema sign-off) |
+| T14 | Agent OS: AI-assisted planning workflow | IN PROGRESS — Bridge issued 2026-05-21 |
 | T15 | Backend: `plan_url` column on tasks | IN PROGRESS — Bridge issued 2026-05-21 |
 
 ---
@@ -29,7 +29,7 @@
 - [x] T11: `"cancelled"` removed from `TASK_STATUSES` in `BoardPage.tsx`, `SharePage.tsx`, and `KanbanColumn.tsx`; `DemoBoard.tsx` updated
 - [x] T12: Pencil icon renders in `TaskDetail` header when `task.status === "todo"` and `onEdit` prop is provided; wired from `BoardPage`
 - [x] T13: `ready-for-planning` label (color `#6366F1`) seeded automatically on every new board creation
-- [ ] T14: Agent OS planning workflow documented in skill config; deferred until T15 lands
+- [ ] T14: Agent OS planning workflow — `skills/agent-kanban/CLAUDE.md` updated with full planning behavior rules; agent correctly silences on new todo, defers on ready-for-planning label after ~1 minute, proceeds immediately on explicit request, writes plan doc and sets `plan_url` on approval
 - [ ] T15: `plan_url TEXT` nullable column on `tasks`; migration `0024_task_plan_url.sql` applied; wired through `taskRepo.ts`, `routes.ts`, `shared/types.ts`, `TaskDetail.tsx`; CLI `output.ts` and `describe.ts` display it — Tim schema sign-off: RECEIVED 2026-05-21
 - [ ] `pnpm build` exits zero
 - [ ] `pnpm tsc --noEmit` exits zero
@@ -37,7 +37,7 @@
 
 ---
 
-*Last updated: 2026-05-21 (T9/T11/T12/T13 marked DONE; T10 unblocked; T10 Bridge issued 2026-05-21; T15 Bridge issued 2026-05-21)*
+*Last updated: 2026-05-21 (T9/T11/T12/T13 marked DONE; T10 unblocked; T10 Bridge issued 2026-05-21; T15 Bridge issued 2026-05-21; T14 Bridge issued 2026-05-21)*
 
 ---
 
@@ -524,6 +524,143 @@ This allows `ak apply` YAML/JSON files to use `planUrl` in the spec and have it 
 6. Invoke Bandit for QA gate
 
 **Next Step:** Skylar — create the worktree, then work through the eight files in order: migration → shared types → taskRepo → TaskDetail → describe → output → parser. Routes needs no change. Run the verification checklist. Invoke Bandit.
+
+---
+
+### HANDOFF BRIDGE — T14
+**Topic:** Agent OS: AI-assisted planning workflow
+**Track:** T14
+**Specialist:** Skylar (Agent OS config only — no `apps/web/` or `packages/` source changes)
+**Static DNA Check:** Aligned — T14 touches only `skills/agent-kanban/SKILL.md` (renamed to `CLAUDE.md` with skill frontmatter, or a new `PLANNING.md` appended to the skill). No schema, no auth, no frontend code. T13 (label seeded on boards) and T15 (`plan_url` column on tasks) are both merged — all runtime dependencies are live.
+**Dynamic DNA State:**
+- **Product Context:** When a task is marked `ready-for-planning`, a board agent should eventually ask Tim "Would you like me to create a plan?" — but not immediately on every tick. On approval, the agent writes a plan document and stamps the task with its URL via `PATCH /api/tasks/:id { "plan_url": "..." }`. Tasks stay in `todo` until the agent claims them after the plan is approved.
+- **Current Plan:** Sprint 6 → T14 section in `docs/context/plan.md`
+- **Execution Files:**
+  - `skills/agent-kanban/SKILL.md` — **primary and only file to modify**; add a new `## AI-Assisted Planning Workflow` section (do not touch any other section)
+
+**Migration Safety:** Reversible — config/doc change only. No schema or auth impact.
+**Security Review:** N/A
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/track-14 track/14-planning-workflow`
+
+---
+
+#### Exact implementation steps for Skylar
+
+**Step 1 — Worktree setup**
+```bash
+bash scripts/worktree-add.sh .worktrees/track-14 track/14-planning-workflow
+cd .worktrees/track-14
+```
+
+---
+
+**Step 2 — `skills/agent-kanban/SKILL.md` — add planning workflow section**
+
+Append the following section to the bottom of `skills/agent-kanban/SKILL.md`, before the `## Error Handling` section (insert it between `## Output Format` and `## Rules`):
+
+```markdown
+## AI-Assisted Planning Workflow
+
+This section governs how a board-watching agent behaves when tasks move through the planning lifecycle.
+
+### Task Recognition (Silent)
+
+When a new task appears in the `todo` column (you see it in `ak get task --board <id> --status todo`), **do not prompt Tim**. Silently note its existence. No message, no question, no announcement. Recognition is internal only.
+
+### `ready-for-planning` Label Trigger (Deferred Prompt)
+
+When a task has the `ready-for-planning` label applied, the agent must not ask Tim immediately. Instead:
+
+1. Record the wall-clock timestamp when you first observe the label on the task.
+2. On your **next invocation** after ~1 minute has elapsed since you first observed the label, ask once:
+   > "Task #N **[title]** is marked `ready-for-planning`. Would you like me to create a plan?"
+3. If Tim says **no** or does not respond within the session, do not ask again for that task.
+4. If Tim says **yes**, proceed immediately to the [Plan Creation](#plan-creation) steps below.
+
+**Elapsed-time check, not a timer:** This is checked opportunistically on each invocation — you are not running a background timer. If your first invocation after 1 minute has passed, ask. If less than 1 minute has passed, stay silent and check next time.
+
+**One ask per task:** Never ask about the same task more than once across separate invocations. Track which task IDs you have already asked about in your working memory for the session.
+
+### Explicit Planning Request (Immediate)
+
+If Tim says anything matching "plan task N", "create a plan for this task", "let's plan", or similar explicit requests referencing a specific task — proceed immediately to [Plan Creation](#plan-creation) without the 1-minute deferral.
+
+### Plan Creation
+
+When planning is approved (either via `ready-for-planning` deferral or explicit request):
+
+1. **Read the task in full:**
+   ```bash
+   ak get task <id>
+   ak get note --task <id>
+   ```
+
+2. **Write the plan document** — create a markdown file at a path you choose (e.g., a local file, a GitHub Gist, or a file committed to the repository's `docs/plans/` directory). The plan must include:
+   - **Objective:** one-sentence goal
+   - **Scope:** what is in-scope and out-of-scope
+   - **Implementation steps:** ordered list of concrete actions
+   - **Verification:** how to confirm the work is correct (commands, manual checks)
+   - **Risks:** any blockers, dependencies, or ambiguities to resolve before claiming
+
+3. **Get Tim's approval** — present the plan inline or share the document URL. Wait for explicit "looks good", "approved", "go ahead", or equivalent. Do not proceed without approval.
+
+4. **Stamp the task with the plan URL** — once approved, set `plan_url` on the task:
+   ```bash
+   # If the plan is a file committed to the repo, use the GitHub raw URL or PR preview URL.
+   # If the plan is inline text, write it to docs/plans/<task-id>.md and commit it,
+   # then use the GitHub blob URL.
+   curl -X PATCH <API_BASE>/api/tasks/<id> \
+     -H "Authorization: Bearer $AK_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"plan_url": "<url>"}'
+   ```
+   Or via apply:
+   ```yaml
+   kind: Task
+   spec:
+     id: <id>
+     planUrl: <url>
+   ```
+   ```bash
+   ak apply -f task-plan.yaml
+   ```
+
+5. **Leave the task in `todo`** — do not claim the task yet. The task remains `todo` until Tim or a machine daemon assigns it and the agent claims it via `ak task claim <id>`. Plan approval is not a claim signal.
+
+### State to Track Per Session
+
+To implement the deferred-prompt behavior correctly, maintain this lightweight state in working memory:
+
+```
+planning_observations:
+  <task-id>:
+    first_seen_ready: <ISO timestamp>
+    asked: <true|false>
+```
+
+Reset this state at the start of each fresh session. If you re-enter a session where you already asked about a task (asked: true), do not ask again.
+```
+
+---
+
+**Step 3 — Verification**
+
+1. Read the updated `skills/agent-kanban/SKILL.md` and confirm:
+   - The new `## AI-Assisted Planning Workflow` section appears cleanly between `## Output Format` and `## Rules`
+   - All four behaviors are present: silent recognition, deferred label prompt, explicit request path, plan creation with `plan_url` stamp
+   - No other section is modified
+2. `git diff` — confirm only `skills/agent-kanban/SKILL.md` is changed
+3. Invoke Bandit for QA gate
+
+**Verification (runtime behavior — manual)**
+Load the skill into a Claude session that is watching a board. Apply the `ready-for-planning` label to a `todo` task. Confirm:
+- First invocation (< 1 min elapsed): no prompt
+- Next invocation (> 1 min elapsed): agent asks "Task #N [title] is marked `ready-for-planning`. Would you like me to create a plan?"
+- Reply "yes": agent reads task, produces a plan, waits for approval
+- Approve plan: agent runs `PATCH /api/tasks/:id` with `plan_url`; task stays `todo`
+- `ak get task <id>` shows `plan_url` populated
+
+**Next Step:** Skylar — create the worktree, open `skills/agent-kanban/SKILL.md`, and append the `## AI-Assisted Planning Workflow` section exactly as specified in Step 2. Confirm the section order is correct (`Output Format` → `AI-Assisted Planning Workflow` → `Rules`). Run `git diff` to verify only one file changed. Invoke Bandit.
 
 ---
 

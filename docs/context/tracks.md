@@ -107,18 +107,17 @@
 
 ---
 
+### Track 14 — Agent OS: AI-assisted planning workflow
 
-
-- **Status:** READY — T15 merged; unblocked 2026-05-21
+- **Status:** IN PROGRESS — Bridge issued 2026-05-21
 - **Specialist:** Skylar (Agent OS config only — no `apps/web/` or `packages/` source changes)
 - **Branch:** `track/14-planning-workflow`
-- **Goal:** Define AI-assisted planning behavior in Agent OS skill config. Silent task recognition, `ready-for-planning` label trigger with ~1-minute deferred prompt, explicit planning request path.
+- **Goal:** Define AI-assisted planning behavior in `skills/agent-kanban/SKILL.md`. Four behaviors: (1) silent recognition of new `todo` tasks, (2) deferred prompt after ~1 minute when `ready-for-planning` label is applied, (3) immediate planning on explicit user request, (4) on approval — write plan doc, set `plan_url` on task via `PATCH /api/tasks/:id`, leave task in `todo`.
 - **Primary files:**
-  - `skills/agent-kanban/CLAUDE.md` (or equivalent skill behavior file) — document planning workflow rules
-  - Agent soul/CLAUDE.md updates for board agent behavior
-- **Migration Safety:** Reversible (config changes)
+  - `skills/agent-kanban/SKILL.md` — append `## AI-Assisted Planning Workflow` section (only file to modify)
+- **Migration Safety:** Reversible (config/doc change only)
 - **Security Review:** N/A
-- **Depends on:** T13 (label must exist on boards); Tim decision on plan_url (Q5)
+- **Depends on:** T13 (label seeded on boards — DONE), T15 (`plan_url` column — DONE)
 
 ---
 
@@ -127,7 +126,7 @@
 **MANDATORY: Always use `scripts/worktree-add.sh`, never raw `git worktree add`.**
 See AGENTIC.md §4 for the full explanation. pnpm's hoisted `node_modules` are not present in raw worktrees — the script symlinks them.
 
-T10 is complete — DONE. T15 Bridge issued 2026-05-21 (Tim schema sign-off received). T14 unblocked once T15 lands.
+T10 is complete — DONE. T15 Bridge issued 2026-05-21 (Tim schema sign-off received). T14 Bridge issued 2026-05-21 — now IN PROGRESS.
 
 ---
 
@@ -193,4 +192,4 @@ T10 is complete — DONE. T15 Bridge issued 2026-05-21 (Tim schema sign-off rece
 
 ---
 
-*Last updated: 2026-05-21 (T9/T10/T11/T12/T13/T15/T16 DONE — Bandit PASS all; T14 unblocked, pending T15 merge)*
+*Last updated: 2026-05-21 (T9/T10/T11/T12/T13/T15/T16 DONE — Bandit PASS all; T14 Bridge issued 2026-05-21 — IN PROGRESS)*
