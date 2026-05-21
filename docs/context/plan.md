@@ -2,15 +2,158 @@
 
 ---
 
-## Sprint 8 Backlog (not yet opened)
+## Sprint 8 — Sprints + Tracks Foundation (OPENED 2026-05-21)
 
-Items deferred from Sprint 7 or surfaced during Sprint 7 execution. Peaches will formally plan when Sprint 8 opens.
+**Objective:** Land the data + API + UI scaffolding for the north-star architecture (see `docs/context/north-star.md`). Make `Sprint` a first-class entity with a number, theme, and `planning → active → closed` lifecycle. Give every task a `sprint_id` and per-sprint `track_number` so cards display as `S{n}-T{m}` (e.g. `S8-T1`). Backfill synthetic Sprint 4–7 rows so this sprint lands on number 8. Rename the **TODO** column to **TRACKS** and surface the sprint header on the board view. CLI gains `ak sprint open|close|list`.
+
+This sprint is intentionally narrow: foundation only. Backlog tab, planning trigger, agent definition sync, settings reorg, and crypto deprecation are scheduled for Sprints 9–13 per the approved sequence in `north-star.md`.
+
+---
+
+## Tracks
+
+| Track | Goal | Status |
+|---|---|---|
+| S8-T1 | Backend: `sprints` table + `tasks.sprint_id` + `tasks.track_number`; backfill Sprints 4–7; sprint repo + routes | PLANNED |
+| S8-T2 | CLI: `ak sprint open|close|list` commands | PLANNED |
+| S8-T3 | Frontend: TODO→TRACKS rename, `SprintHeader` banner, `S{n}-T{m}` label on TaskCard, `useSprint` hook | PLANNED |
+
+---
+
+## Dependency order
+
+```
+S8-T1 (backend foundation) → S8-T2 (CLI consumes routes)
+S8-T1 (backend foundation) → S8-T3 (frontend consumes routes)
+S8-T2 ∥ S8-T3 (parallel after S8-T1 lands on main)
+```
+
+---
+
+## Definition of Done (Sprint 8)
+
+- [ ] **S8-T1:**
+  - [ ] Migration creates `sprints` table per `north-star.md` schema (id, board_id, number, theme, status, opened_at, closed_at, created_by). UNIQUE(board_id, number).
+  - [ ] Migration adds `tasks.sprint_id` (TEXT NULL FK), `tasks.track_number` (INTEGER NULL). UNIQUE(sprint_id, track_number) where sprint_id IS NOT NULL.
+  - [ ] Backfill SQL inserts synthetic rows for Sprint 4, 5, 6, 7 on the legacy/demo board(s) so `ak sprint open` lands on number 8 next. Synthetic rows carry `status='closed'` and `theme` matching the archive headers in `tracks.md`. Existing tasks from those sprints are NOT migrated (per `north-star.md` migration strategy — Sprint 7 tasks T18–T24 may be backfilled to `sprint_id` of the synthetic Sprint 7 row; earlier sprints remain documentation-only).
+  - [ ] `apps/web/server/sprintRepo.ts` — `createSprint`, `closeSprint`, `getSprint`, `listSprintsByBoard`, `getActiveSprint`. No raw SQL outside the repo.
+  - [ ] Routes: `POST /api/boards/:id/sprints` (creates with `status=planning`, auto-increments `number` per board), `PATCH /api/sprints/:id` (status transitions only: `planning → active → closed`, no skip), `GET /api/boards/:id/sprints?status=`.
+  - [ ] Shared types updated in `packages/shared/src/types.ts`: `Sprint`, `SprintStatus`, additions to `Task`.
+  - [ ] Vitest unit + integration tests for repo + routes (Miniflare D1, no mocks). Status-transition guard tested. Number-uniqueness tested.
+  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` exits zero.
+  - [ ] Bandit PASS.
+- [ ] **S8-T2:**
+  - [ ] `ak sprint open <theme> [--board <id>]` — POSTs to `/api/boards/:id/sprints`, transitions immediately to `active`. Prints the resulting `S{number}` label.
+  - [ ] `ak sprint close [<id>] [--board <id>]` — closes the active sprint (no id needed if exactly one active sprint on the board).
+  - [ ] `ak sprint list [--board <id>] [--status <s>]` — table output, `-o json` supported.
+  - [ ] `bash scripts/install-cli.sh` refreshes the local CLI; smoke `ak sprint list` against a running stack.
+  - [ ] Vitest unit tests for command parsers.
+  - [ ] Bandit PASS.
+- [ ] **S8-T3:**
+  - [ ] **TODO → TRACKS:** column header rename in `apps/web/src/components/Column.tsx` and any dependent strings in `apps/web/src/routes/BoardPage.tsx`. `task.status` enum value remains `todo` in the DB — UI label only.
+  - [ ] `apps/web/src/components/SprintHeader.tsx` — new component. Banner above the columns showing active sprint theme, status badge, and a **Close Sprint** button visible only when status=active and all tracks are in `done` or `cancelled`. Empty state when no active sprint (CTA: "Open a sprint via `ak sprint open`").
+  - [ ] `apps/web/src/hooks/useSprint.ts` — `useActiveSprint(boardId)` (TanStack Query, `["sprint", boardId, "active"]`), `useCloseSprint`.
+  - [ ] `apps/web/src/components/TaskCard.tsx` — display `S{sprint.number}-T{track_number}` chip when both are set; fall back to existing rendering otherwise.
+  - [ ] Playwright E2E: open sprint via API, render board, verify TRACKS column header + S8-T1 chip on a seeded task.
+  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` exits zero.
+  - [ ] Bandit PASS.
+- [ ] All three tracks merged to `main` via PR.
+
+---
+
+## Sprint 8 Bridges
+
+### HANDOFF BRIDGE — S8-T1
+**Topic:** Backend foundation — `sprints` table, task FK, backfill, repo + routes
+**Track:** S8-T1
+**Specialist:** Skylar
+**Static DNA Check:** Aligned with AGENTIC.md (D1 migrations, repo layer pattern, Hono routes, Miniflare-backed tests). New table; no auth changes; no new identity types. Owner scoping via `boards.owner_id` (sprints inherit through board_id).
+**Dynamic DNA State:**
+- **Product Context:** Today, "sprint" is a doc concept in `tracks.md`. We need it as a row so the UI can show a banner, the CLI can open/close one, and tasks can carry a per-sprint track number. Backfilling 4–7 makes the next sprint number 8 (matching the archive).
+- **Current Plan:** Sprint 8 → S8-T1 in this file.
+- **Execution Files:**
+  - `apps/web/migrations/NNNN_sprints.sql` — new migration (next ordinal)
+  - `apps/web/server/sprintRepo.ts` — new
+  - `apps/web/server/routes/sprints.ts` — new (or wire into existing routes index)
+  - `apps/web/worker/index.ts` — register routes
+  - `packages/shared/src/types.ts` — add `Sprint`, `SprintStatus`; extend `Task`
+  - `tests/sprintRepo.test.ts`, `tests/sprintRoutes.test.ts` — new
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s8-t1-backend track/s8-t1-sprints-foundation`
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — all green.
+2. Migration applied locally; `sqlite3 .wrangler/state/.../db.sqlite "SELECT number, theme, status FROM sprints ORDER BY number;"` shows synthetic 4–7 rows.
+3. `curl -X POST .../api/boards/<id>/sprints -d '{"theme":"foo"}'` returns a sprint with `number=8`.
+4. Bandit QA.
+
+**Next Step:** Skylar — start by reading `apps/web/migrations/` for naming/style and `apps/web/server/taskRepo.ts` for repo conventions. Draft the migration first, get the schema right, then build the repo + routes on top.
+
+---
+
+### HANDOFF BRIDGE — S8-T2
+**Topic:** CLI sprint commands (`open`, `close`, `list`)
+**Track:** S8-T2
+**Specialist:** Skylar
+**Depends on:** S8-T1 merged
+**Static DNA Check:** Aligned — `packages/cli/` is the right home; existing `ak get/create board` commands set the pattern. No daemon work, no auth change.
+**Dynamic DNA State:**
+- **Product Context:** A human or Peaches needs a one-line way to spin up Sprint N (and close it later). The CLI is the lowest-friction entry point until the Backlog/Plan UI lands in Sprint 9–10.
+- **Execution Files:**
+  - `packages/cli/src/commands/sprint.ts` — new
+  - `packages/cli/src/index.ts` — register subcommand tree
+  - `tests/cli-sprint.test.ts` — new
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s8-t2-cli track/s8-t2-cli-sprint`
+
+**Verification:**
+1. `bash scripts/install-cli.sh` then `ak sprint open "Sprints + Tracks foundation"` returns `S8`.
+2. `ak sprint list -o json` shows the active sprint.
+3. `ak sprint close` closes it; second invocation errors cleanly.
+4. Bandit QA.
+
+**Next Step:** Skylar — model the commands on `packages/cli/src/commands/board.ts`. Reuse the existing API client + auth (machine API key from `~/.config/agent-kanban/`).
+
+---
+
+### HANDOFF BRIDGE — S8-T3
+**Topic:** Frontend foundation — TRACKS column, SprintHeader banner, S{n}-T{m} chip
+**Track:** S8-T3
+**Specialist:** Skylar
+**Depends on:** S8-T1 merged (consumes routes)
+**Static DNA Check:** Aligned — pure frontend (React + Tailwind + shadcn/ui + TanStack Query). No drag-and-drop, no claim/release buttons (UI principle: agents drive lifecycle). Sprint header's Close Sprint button is the only new lifecycle action surfaced in the UI; that's intentional and Tim-approved per north-star.md (it's a sprint-level, not task-level, action).
+**Dynamic DNA State:**
+- **Product Context:** Users land on the board view. Today they see TODO/IN PROGRESS/IN REVIEW/DONE columns and a board name. After this track they see a sprint banner (theme + status) and a TRACKS column; cards show their `S8-T1`-style label.
+- **Execution Files:**
+  - `apps/web/src/components/Column.tsx` — TRACKS rename
+  - `apps/web/src/components/SprintHeader.tsx` — new
+  - `apps/web/src/components/TaskCard.tsx` — chip
+  - `apps/web/src/hooks/useSprint.ts` — new
+  - `apps/web/src/routes/BoardPage.tsx` — mount `SprintHeader`
+  - `apps/web/src/lib/api.ts` — `api.sprints.*`
+  - E2E spec under `tests/e2e/` (Playwright)
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s8-t3-frontend track/s8-t3-frontend-sprint-ui`
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — green.
+2. Browser: open a board with an active sprint → banner renders theme + status; column reads TRACKS; card chip reads `S8-T1`.
+3. Close Sprint button greys out until all tracks are done/cancelled (manually verify with seeded data).
+4. Playwright E2E green; clean-code-reviewer + Bandit PASS.
+
+**Next Step:** Skylar — read `Column.tsx` and `BoardPage.tsx` first to understand the layout. Implement the hook before the components so the data shape is locked.
+
+---
+
+## Future Backlog (post-Sprint 8)
+
+Items not in Sprint 8. Some are gated by Sprint 8 landing (e.g. UI work waits on the data model); others are pre-existing and unrelated. Peaches will fold these into Sprint 9+ planning per `north-star.md`'s sequence.
 
 - **T22 (re-scoped)** — CLI daemon end-to-end smoke test. Original T22 was an operational "run the smoke" track; cold-run on 2026-05-21 found prerequisite gaps (missing `gpg`, broken `set -u` cleanup in script, opaque `json_query` errors, mandatory `<runtime>` argument undocumented). Re-scoped to: stand up local stack → harden script (3 specific bugs) → run twice green for idempotency → Bandit on script diff only.
 - **GPG prerequisite** — `ak start` requires `gpg` (signing agent commits) but it isn't installed on Tim's workstation and there's no preflight check or setup doc. Add either a `scripts/install-cli.sh`-style preflight or an `ak doctor` command that verifies daemon prerequisites.
 - **Peaches task-refinement workflow** — when Tim describes a task in non-engineering language, Peaches should refine it into engineering-aligned cards before Skylar executes. Concept; needs scoping. Board task `d5kv1hfw1d2v`.
 - **Lift `useBoardSSE` into shared provider** — surfaced during T24. `useBoard` and `useAgentPresence` each open their own EventSource per board mount; Chrome caps at ~6 per origin. Lift to a `BoardSSEContext` provider in `BoardPage.tsx` so consumers share one connection.
-- **`useAgentPresence` choreography for `released`/`timed_out`** — surfaced during T24. The choreography animates `claimed`/`review_requested`/`completed`/`rejected`/`cancelled` but skips `released` and `timed_out` even though those move cards. Define a release/timeout sequence.
+- ~~**`useAgentPresence` choreography for `released`/`timed_out`**~~ — DROPPED 2026-05-21. Card movement already works via T24's `STATUS_CHANGING_ACTIONS` invalidation in `useBoard.ts`; agent-drag animation is not required.
 
 ---
 

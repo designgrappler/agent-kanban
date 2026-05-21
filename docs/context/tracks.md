@@ -1,20 +1,32 @@
 # Agent Kanban — Active Tracks
 
-## Current Sprint: NONE — Sprint 7 closed 2026-05-21; Sprint 8 not yet opened
+## Current Sprint: Sprint 8 — Sprints + Tracks Foundation (OPENED 2026-05-21)
 
-> When Tim is ready to open Sprint 7's successor, Peaches will plan the next sprint from the Sprint 8 Backlog below plus any new directives from Tim.
+> Foundation sprint for the north-star architecture (`docs/context/north-star.md`). Establishes `Sprint` as a first-class entity with `S{n}-T{m}` track numbering and renames the TODO column to TRACKS. Backlog tab, planning trigger, and agent-definition sync arrive in Sprints 9–11.
+
+| Track | Goal | Status |
+|---|---|---|
+| S8-T1 | Backend: `sprints` table + `tasks.sprint_id` + `track_number`; backfill 4–7; sprint repo + routes | PLANNED |
+| S8-T2 | CLI: `ak sprint open|close|list` | PLANNED — depends on S8-T1 |
+| S8-T3 | Frontend: TRACKS rename, SprintHeader banner, S{n}-T{m} chip, `useSprint` hook | PLANNED — depends on S8-T1 |
+
+See `docs/context/plan.md` for Definition of Done and Handoff Bridges.
 
 ---
 
-## Sprint 8 Backlog (not yet opened)
+## Future Backlog (post-Sprint 8)
 
-Items deferred from Sprint 7 or surfaced during Sprint 7 execution. Peaches will formally plan when Sprint 8 opens — these are seeds, not committed tracks.
+Items not in Sprint 8. Some unblock once S8 lands; others are pre-existing.
 
 - **T22 (re-scoped)** — CLI daemon end-to-end smoke test. Cold-run on 2026-05-21 found prerequisite gaps (missing `gpg`, broken `set -u` cleanup in script, opaque `json_query` errors, mandatory `<runtime>` argument undocumented). Re-scoped to: stand up local stack → harden script (3 specific bugs) → run twice green for idempotency → Bandit on script diff only. Original board task `7lqed55p3yxl` carries forward.
 - **GPG prerequisite track (NEW)** — `ak start` requires `gpg` for signing agent commits but it isn't installed on Tim's workstation and there's no preflight check or setup doc. Add either a preflight check in `scripts/install-cli.sh` or a new `ak doctor` command that verifies daemon prerequisites. Blocks T22.
 - **Peaches task-refinement workflow** — when Tim describes a task in non-engineering language, Peaches should refine it into engineering-aligned cards before Skylar executes. Concept; needs scoping. Board task `d5kv1hfw1d2v`.
 - **Lift `useBoardSSE` into shared provider** (from T24 follow-up) — `useBoard` and `useAgentPresence` each open their own EventSource per board mount; Chrome caps at ~6 per origin. Lift to a `BoardSSEContext` provider in `BoardPage.tsx` so consumers share one connection.
-- **`useAgentPresence` choreography for `released`/`timed_out`** (from T24 follow-up) — choreography animates `claimed`/`review_requested`/`completed`/`rejected`/`cancelled` but skips `released` and `timed_out` even though those move cards. Define a release/timeout sequence.
+- ~~**`useAgentPresence` choreography for `released`/`timed_out`**~~ — DROPPED 2026-05-21. Card movement for both actions already works via T24's `STATUS_CHANGING_ACTIONS` invalidation in `useBoard.ts`. Tim confirmed agent-drag animation is not required: cards move on their own as close to real time as the SSE poll allows. No further work needed.
+
+---
+
+*Last updated: 2026-05-21 (Sprint 8 OPENED — Sprints + Tracks foundation. Three tracks planned: S8-T1 backend, S8-T2 CLI, S8-T3 frontend. Backfill strategy approved for synthetic Sprints 4–7.)*
 
 ---
 
@@ -74,7 +86,3 @@ See AGENTIC.md §4 for the full explanation. pnpm's hoisted `node_modules` are n
 | T2 | Strip Cloudflare/cloud bindings | DONE |
 | T3 | Configure GitHub OAuth for local dev | DONE |
 | T4 | Smoke test (board renders, all 5 columns verified) | DONE |
-
----
-
-*Last updated: 2026-05-21 (Sprint 7 CLOSED — T18/T19/T20/T23/T24 done with Bandit PASS; T22 deferred to Sprint 8 due to gpg prerequisite + script bugs; Sprint 8 Backlog seeded; T24 merged to main)*
