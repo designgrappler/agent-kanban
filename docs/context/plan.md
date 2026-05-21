@@ -37,7 +37,7 @@
 
 ---
 
-*Last updated: 2026-05-21 (T9/T11/T12/T13 marked DONE; T10 unblocked)*
+*Last updated: 2026-05-21 (T9/T11/T12/T13 marked DONE; T10 unblocked; T10 Bridge issued 2026-05-21)*
 
 ---
 
@@ -208,6 +208,134 @@ The `createTask` handler also requires `assigned_to` (line 768 in `routes.ts`). 
 ---
 
 *Last updated: 2026-05-21 (Sprint 6 section added; T9/T11/T12/T13 marked DONE; T10 unblocked; T5/T6/T7/T8 Sprint 5 DONE Bandit PASS)*
+
+---
+
+---
+
+## Sprint 6 Bridges
+
+### HANDOFF BRIDGE — T10
+**Topic:** Frontend: update create board form (add Theme field, remove type selector)
+**Track:** T10
+**Specialist:** Skylar
+**Static DNA Check:** Aligned — React + Vite + Tailwind + shadcn/ui frontend. Pure UI track; no schema migration, no auth changes. T9 merged to main; `packages/shared/src/types.ts` already has `theme?: string` on `CreateBoardInput` and `theme?: string | null` on `Board`.
+**Dynamic DNA State:**
+- **Product Context:** The board creation form currently exposes a dev/ops type toggle that users should not need to see. All boards are `dev`. The form needs a Theme textarea so users can describe the sprint purpose when creating a board.
+- **Current Plan:** Sprint 6 → Track 10 section in `docs/context/plan.md`
+- **Execution Files:**
+  - `apps/web/src/routes/NewBoardPage.tsx` — primary change file (remove type selector, add theme textarea)
+  - `apps/web/src/hooks/useBoard.ts` — update `useCreateBoard` mutation input type to include `theme?: string`
+  - `apps/web/src/lib/api.ts` — update `api.boards.create` signature to include `theme?: string`
+
+**Migration Safety:** Reversible — UI-only change, no schema or auth impact
+**Security Review:** N/A
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/track-10 track/10-board-form-update`
+
+**Exact implementation steps for Skylar:**
+
+**Step 1 — Worktree setup**
+```bash
+bash scripts/worktree-add.sh .worktrees/track-10 track/10-board-form-update
+cd .worktrees/track-10
+```
+
+**Step 2 — `apps/web/src/routes/NewBoardPage.tsx`**
+
+Five targeted edits, in order:
+
+1. **Remove `boardType` state** — delete:
+   ```ts
+   const [boardType, setBoardType] = useState<"dev" | "ops">("dev");
+   ```
+
+2. **Add `boardTheme` state** — add after the `boardName` state line:
+   ```ts
+   const [boardTheme, setBoardTheme] = useState("");
+   ```
+
+3. **Update `handleCreateBoard` payload** — change:
+   ```ts
+   await createBoard.mutateAsync({ name: boardName, type: boardType });
+   ```
+   to:
+   ```ts
+   await createBoard.mutateAsync({ name: boardName, type: "dev", theme: boardTheme || undefined });
+   ```
+
+4. **Add `Textarea` import** — add to the existing import block:
+   ```ts
+   import { Textarea } from "../components/ui/textarea";
+   ```
+
+5. **Replace the board type UI block with the Theme textarea** — in the `step === 0` JSX, remove:
+   ```tsx
+   <label className="block text-xs font-medium text-content-tertiary uppercase tracking-wide">Board type</label>
+   <div className="flex gap-2">
+     {(["dev", "ops"] as const).map((t) => (
+       <button
+         key={t}
+         onClick={() => setBoardType(t)}
+         className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+           boardType === t ? "bg-accent text-white" : "bg-surface-tertiary text-content-secondary hover:text-content-primary"
+         }`}
+       >
+         {t === "dev" ? "Dev" : "Ops"}
+         <span className="block text-xs font-normal mt-0.5 opacity-70">{t === "dev" ? "Git / PR workflow" : "No repo required"}</span>
+       </button>
+     ))}
+   </div>
+   ```
+   Replace with:
+   ```tsx
+   <label className="block text-xs font-medium text-content-tertiary uppercase tracking-wide">Theme</label>
+   <Textarea
+     value={boardTheme}
+     onChange={(e) => setBoardTheme(e.target.value)}
+     placeholder="Describe the purpose of this sprint."
+     rows={3}
+   />
+   ```
+
+**Step 3 — `apps/web/src/hooks/useBoard.ts`**
+
+Update the `useCreateBoard` mutation input type to allow `theme`:
+
+Change:
+```ts
+mutationFn: (input: { name: string; type: "dev" | "ops"; description?: string }) => api.boards.create(input),
+```
+To:
+```ts
+mutationFn: (input: { name: string; type: "dev" | "ops"; description?: string; theme?: string }) => api.boards.create(input),
+```
+
+**Step 4 — `apps/web/src/lib/api.ts`**
+
+Update `api.boards.create` signature to accept `theme`:
+
+Change:
+```ts
+create: (input: { name: string; type: "dev" | "ops"; description?: string }) => request<any>("POST", "/boards", input),
+```
+To:
+```ts
+create: (input: { name: string; type: "dev" | "ops"; description?: string; theme?: string }) => request<any>("POST", "/boards", input),
+```
+
+No other change to `api.ts` — the `request()` function passes the full input object as the JSON body, so `theme` will be included automatically. `POST /api/boards` in `routes.ts` already accepts and passes `theme` to `boardRepo.createBoard` (confirmed — no backend change required).
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — must all exit zero
+2. `pnpm dev` — open `/boards/new` in the browser
+3. Confirm the dev/ops type toggle is gone
+4. Confirm the Theme textarea appears with placeholder "Describe the purpose of this sprint."
+5. Fill in board name + optional theme → click "Create Board" → board is created and you land on the board view
+6. Confirm the created board has a `theme` value (check via `GET /api/boards/:id` or inspect the board page)
+7. Create a board with no theme → confirm the payload omits `theme` (no error)
+8. Invoke Bandit for QA gate
+
+**Next Step:** Skylar — create the worktree, then work through the three files in order: `NewBoardPage.tsx` → `useBoard.ts` → `api.ts`. Run the verification checklist. Invoke Bandit.
 
 ---
 
