@@ -2,7 +2,7 @@ import type { Task } from "@agent-kanban/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
-import { Pencil } from "lucide-react";
+import { ExternalLink, Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
@@ -57,11 +57,6 @@ function formatElapsed(ms: number): string {
   if (h > 0) return `${h}h ${m}m ${s}s`;
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
-}
-
-function formatPrLabel(prUrl: string): string {
-  const match = prUrl.match(/\/pull\/(\d+)(?:[/?#]|$)/);
-  return match ? `#${match[1]}` : "PR";
 }
 
 function LiveDuration({ startedAt, finishedMinutes }: { startedAt: string | null; finishedMinutes: number | null }) {
@@ -179,8 +174,14 @@ export function TaskDetail({ taskId, labels = [], onClose, onRefresh, onAgentCli
           label="PR"
           value={
             task.pr_url ? (
-              <a href={task.pr_url} target="_blank" rel="noopener noreferrer" className="font-mono text-[13px] text-accent hover:underline">
-                {formatPrLabel(task.pr_url)}
+              <a
+                href={task.pr_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-md bg-surface-tertiary px-2 py-0.5 text-xs text-content-secondary hover:text-content-primary hover:bg-surface-secondary transition-colors max-w-full"
+              >
+                <ExternalLink className="size-3 shrink-0" />
+                <span className="truncate">{task.pr_url}</span>
               </a>
             ) : (
               <span className="text-content-tertiary">—</span>
@@ -191,8 +192,14 @@ export function TaskDetail({ taskId, labels = [], onClose, onRefresh, onAgentCli
           label="Plan"
           value={
             task.plan_url ? (
-              <a href={task.plan_url} target="_blank" rel="noopener noreferrer" className="font-mono text-[13px] text-accent hover:underline">
-                Plan
+              <a
+                href={task.plan_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-md bg-surface-tertiary px-2 py-0.5 text-xs text-content-secondary hover:text-content-primary hover:bg-surface-secondary transition-colors max-w-full"
+              >
+                <ExternalLink className="size-3 shrink-0" />
+                <span className="truncate">{task.plan_url}</span>
               </a>
             ) : (
               <span className="text-content-tertiary">—</span>
