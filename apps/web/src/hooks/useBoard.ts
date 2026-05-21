@@ -1,8 +1,22 @@
+import type { TaskActionType } from "@agent-kanban/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { api } from "../lib/api";
+import { useBoardSSE } from "./useBoardSSE";
 
 const LAST_BOARD_KEY = "ak-last-board";
+
+// Status-changing task actions that should trigger a board refetch.
+// Excludes "created", "moved", "commented", "assigned" (no column change).
+const STATUS_CHANGING_ACTIONS = new Set<TaskActionType>([
+  "claimed",
+  "completed",
+  "released",
+  "timed_out",
+  "cancelled",
+  "rejected",
+  "review_requested",
+]);
 
 /** Remember last visited board for redirect from "/" */
 export function getLastBoardId(): string | null {
@@ -19,6 +33,7 @@ export function clearLastBoardId(id: string) {
 
 /** Fetch a single board by ID (from URL params) */
 export function useBoard(boardId: string | undefined) {
+  const queryClient = useQueryClient();
   const {
     data: board = null,
     isLoading: loading,
@@ -28,13 +43,33 @@ export function useBoard(boardId: string | undefined) {
     queryKey: ["board", boardId],
     queryFn: () => api.boards.get(boardId!),
     enabled: !!boardId,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     retry: 2,
   });
 
   useEffect(() => {
     if (boardId && board) setLastBoardId(boardId);
   }, [boardId, board]);
+
+  // Real-time updates: invalidate the board query when SSE reports a status-changing
+  // task action so cards move columns within ~2s instead of waiting for the polling
+  // interval. This opens a second EventSource alongside useAgentPresence's; React
+  // Query dedupes the resulting refetches.
+  const { events } = useBoardSSE(boardId);
+  const processedRef = useRef(0);
+  useEffect(() => {
+    if (!boardId) return;
+    const unprocessed = events.slice(processedRef.current);
+    processedRef.current = events.length;
+    if (unprocessed.some((e) => STATUS_CHANGING_ACTIONS.has(e.action))) {
+      queryClient.invalidateQueries({ queryKey: ["board", boardId] });
+    }
+  }, [events, boardId, queryClient]);
+
+  // Reset processed cursor when boardId changes so we don't carry indices across boards.
+  useEffect(() => {
+    processedRef.current = 0;
+  }, [boardId]);
 
   const error = rawError ? ((rawError as any).message === "NOT_AUTHENTICATED" ? "NOT_AUTHENTICATED" : "Can't reach server") : null;
 
