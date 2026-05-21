@@ -109,7 +109,7 @@
 
 ### Track 14 — Agent OS: AI-assisted planning workflow
 
-- **Status:** IN PROGRESS — Bridge issued 2026-05-21
+- **Status:** DONE — Bandit PASS
 - **Specialist:** Skylar (Agent OS config only — no `apps/web/` or `packages/` source changes)
 - **Branch:** `track/14-planning-workflow`
 - **Goal:** Define AI-assisted planning behavior in `skills/agent-kanban/SKILL.md`. Four behaviors: (1) silent recognition of new `todo` tasks, (2) deferred prompt after ~1 minute when `ready-for-planning` label is applied, (3) immediate planning on explicit user request, (4) on approval — write plan doc, set `plan_url` on task via `PATCH /api/tasks/:id`, leave task in `todo`.
@@ -192,4 +192,4 @@ T10 is complete — DONE. T15 Bridge issued 2026-05-21 (Tim schema sign-off rece
 
 ---
 
-*Last updated: 2026-05-21 (T9/T10/T11/T12/T13/T15/T16 DONE — Bandit PASS all; T14 Bridge issued 2026-05-21 — IN PROGRESS)*
+*Last updated: 2026-05-21 (T9/T10/T11/T12/T13/T14/T15/T16 DONE — Bandit PASS all)*

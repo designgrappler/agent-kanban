@@ -218,3 +218,31 @@ EOF
 - **429 Rate limited**: wait and retry (Retry-After header provided)
 - **401 Unauthorized**: your session token is invalid or expired — report to the daemon, do not attempt to fix
 - **409 Conflict**: task is not assigned to you, or wrong status for this action
+
+## AI-Assisted Planning Workflow
+
+### Rule 1 — Silent recognition
+
+When a new `todo` task appears on the board, note it internally. Do not prompt Tim.
+
+### Rule 2 — Deferred label prompt
+
+When the `ready-for-planning` label is first observed on a task, record the observation timestamp. On the next invocation after approximately 1 minute has elapsed since first observation, ask once:
+
+> "Task #N [title] is marked `ready-for-planning`. Would you like me to create a plan?"
+
+Ask once per task per session. If Tim says no, do not ask again for that task in the same session.
+
+### Rule 3 — Explicit request path
+
+If Tim explicitly asks to plan a task ("plan task N", "create a plan for X", etc.), bypass the deferral entirely and proceed immediately.
+
+### Rule 4 — Plan creation and `plan_url` stamp
+
+1. Read the task details via `ak get task <id>` or `GET /api/tasks/:id`.
+2. Draft the plan document.
+3. Present the plan to Tim for approval.
+4. On approval: record the plan (as a file, a gist, or inline in the response), then update the task with the plan reference using one of:
+   - `PATCH /api/tasks/:id` with body `{ "plan_url": "<url-or-reference>" }`
+   - `ak apply -f` with a spec containing `planUrl: <value>`
+5. Leave the task in `todo` status — do NOT claim it. The daemon assigns and the agent claims via `ak task claim` after the plan is approved.
