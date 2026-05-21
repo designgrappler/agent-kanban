@@ -72,6 +72,22 @@
 
 ---
 
+### Track 11 — Frontend: remove Cancelled column from board view
+- **Status:** DONE — Bandit PASS
+- **Specialist:** Skylar
+- **Branch:** `track/11-remove-cancelled-column`
+- **Goal:** Remove the Cancelled column from the Kanban board UI (BoardPage, SharePage, KanbanColumn, DemoBoard). Backend cancel endpoint and daemon handling remain untouched. Demo updated to 4-column layout.
+- **Primary files:**
+  - `apps/web/src/routes/BoardPage.tsx`
+  - `apps/web/src/routes/SharePage.tsx`
+  - `apps/web/src/components/KanbanColumn.tsx`
+  - `apps/web/src/components/DemoBoard.tsx`
+- **Migration Safety:** Reversible — UI-only change
+- **Security Review:** N/A
+- **Depends on:** (unblocked)
+
+---
+
 ## Worktree Note
 
 If T5 and T8 run in parallel (they are independent):
@@ -106,4 +122,4 @@ Known gaps carried to Sprint 5: user session cannot create tasks; UI is fully re
 
 ---
 
-*Last updated: 2026-05-20 (T5 → DONE Bandit PASS; T8 → DONE Bandit PASS; T6 → DONE Bandit PASS; T7 → DONE Bandit PASS 2026-05-20)*
+*Last updated: 2026-05-20 (T5 → DONE Bandit PASS; T8 → DONE Bandit PASS; T6 → DONE Bandit PASS; T7 → DONE Bandit PASS 2026-05-20; T11 → DONE Bandit PASS 2026-05-20)*

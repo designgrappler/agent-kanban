@@ -161,9 +161,6 @@ function seqApprove(t: number, li: number, ti: number): TE[] {
 function seqReject(t: number, li: number, ti: number): TE[] {
   return seqLeaderDrag(t, li, ti, "in_progress", { status: "in_progress", glow_suppressed: true });
 }
-function seqCancel(t: number, li: number, ti: number): TE[] {
-  return seqLeaderDrag(t, li, ti, "cancelled", { status: "cancelled" });
-}
 
 // Worker reclaims after reject: fly → absorb (1.5s)
 function seqReclaim(t: number, ai: number, ti: number): TE[] {
@@ -209,7 +206,7 @@ const T: TE[] = [
   // Sentinel reviews one by one
   ...seqApprove(54500, S, 2), // task 3 approved → done at ~58.6
   ...seqReject(59500, S, 3), // task 4 rejected → IP at ~63.6
-  ...seqCancel(64500, S, 4), // task 5 cancelled at ~68.6
+  ...seqApprove(64500, S, 4), // task 5 approved → done at ~68.6
 
   // Nova reclaims task 4, reviews again, approved
   ...seqReclaim(65500, 1, 3),
@@ -221,13 +218,12 @@ const DONE_DELAY = Math.max(...T.map((e) => e.delay)) + 1000;
 
 // ─── Hook ───
 
-const STATUSES = ["todo", "in_progress", "in_review", "done", "cancelled"] as const;
+const STATUSES = ["todo", "in_progress", "in_review", "done"] as const;
 const LABELS: Record<string, string> = {
   todo: "Todo",
   in_progress: "In Progress",
   in_review: "In Review",
   done: "Done",
-  cancelled: "Cancelled",
 };
 
 function useDemoSequence() {
@@ -275,7 +271,7 @@ export function DemoBoard({ onContinue, onSkip }: { onContinue: () => void; onSk
   const { columns, avatars, done, replay } = useDemoSequence();
   return (
     <div className="relative">
-      <div className="hidden md:grid grid-cols-5 min-h-[50vh]">
+      <div className="hidden md:grid grid-cols-4 min-h-[50vh]">
         {columns.map((c) => (
           <KanbanColumn key={c.status} column={c} labels={DEMO_LABELS} onTaskClick={() => {}} />
         ))}
