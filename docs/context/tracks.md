@@ -94,6 +94,21 @@
 
 ---
 
+### Track 24 — Frontend: real-time board updates via SSE invalidation
+
+- **Status:** in progress (Skylar implementation done; pending Bandit)
+- **Board task:** `87ocfjs35xo5`
+- **Specialist:** Skylar
+- **Branch:** `track/24-sse-task-events`
+- **Goal:** When an agent (or any actor) changes a task's status, browser cards must move columns within ~2s instead of waiting for the 30s React Query polling interval. Subscribe `useBoard` to the existing board SSE stream and invalidate the `["board", boardId]` query on status-changing actions; bump polling to 60s as a safety net.
+- **Primary files:**
+  - `apps/web/src/hooks/useBoard.ts`
+- **Migration Safety:** Reversible — frontend-only, no schema changes
+- **Security Review:** N/A
+- **Depends on:** nothing
+
+---
+
 ## Worktree Note
 
 **MANDATORY: Always use `scripts/worktree-add.sh`, never raw `git worktree add`.**
@@ -140,6 +155,8 @@ T18 is the gate — T19, T20, and T22 cannot start until T18 commits the dirty w
 | T4 | Smoke test (board renders, all 5 columns verified) | DONE |
 
 ---
+
+*Last updated: 2026-05-21 (T24 added — real-time SSE board invalidation; Skylar implementation done, pending Bandit)*
 
 *Last updated: 2026-05-21 (Sprint 7 opened; T18/T19/T20/T22/T23 created; T21 dropped; Handoff Bridges issued for T18/T19/T20/T22)*
 
