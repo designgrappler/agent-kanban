@@ -52,6 +52,7 @@ export async function createBoard(
     .run();
 
   await seedBuiltinAgents(db, ownerId);
+  await createBoardLabel(db, id, { name: "ready-for-planning", color: "#6366F1", description: "Marks a task as ready for AI-assisted planning." });
 
   const board = await db.prepare("SELECT * FROM boards WHERE id = ?").bind(id).first<Board>();
   return parseBoard(board!);
@@ -155,7 +156,7 @@ export async function updateBoard(
 export async function createBoardLabel(db: D1, boardId: string, input: BoardLabel): Promise<Board | null> {
   const board = await db.prepare("SELECT * FROM boards WHERE id = ?").bind(boardId).first<Board>();
   if (!board) return null;
-  const labels = parseBoard(board).labels;
+  const labels = parseBoard(board).labels ?? [];
   const label = normalizeLabel(input);
   if (labels.some((existing) => existing.name === label.name)) throw new HTTPException(409, { message: `Label already exists: ${label.name}` });
   return updateBoard(db, boardId, { labels: [...labels, label] });
