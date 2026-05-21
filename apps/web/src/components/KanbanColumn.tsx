@@ -1,5 +1,5 @@
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
-import { Ban, CheckCircle2, Circle, Clock3, Plus, RotateCw } from "lucide-react";
+import { CheckCircle2, Circle, Clock3, Plus, RotateCw } from "lucide-react";
 import { TaskCard } from "./TaskCard";
 
 interface KanbanColumnProps {
@@ -17,7 +17,6 @@ const COLUMN_ICONS: Record<string, typeof Circle> = {
   in_progress: RotateCw,
   in_review: Clock3,
   done: CheckCircle2,
-  cancelled: Ban,
 };
 
 export function KanbanColumn({ column, labels = [], onTaskClick, onAgentClick, onAddTask, onEditTask, onDeleteTask }: KanbanColumnProps) {

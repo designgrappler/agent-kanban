@@ -14,14 +14,13 @@ import { useAgentPresence } from "../hooks/useAgentPresence";
 import { useBoard } from "../hooks/useBoard";
 import { api } from "../lib/api";
 
-const TASK_STATUSES = ["todo", "in_progress", "in_review", "done", "cancelled"] as const;
+const TASK_STATUSES = ["todo", "in_progress", "in_review", "done"] as const;
 
 const TASK_STATUS_LABELS: Record<string, string> = {
   todo: "Todo",
   in_progress: "In Progress",
   in_review: "In Review",
   done: "Done",
-  cancelled: "Cancelled",
 };
 
 export function BoardPage() {
@@ -112,8 +111,8 @@ export function BoardPage() {
     return (
       <div className="min-h-screen bg-surface-primary">
         <Header />
-        <div className="grid gap-0 p-4" style={{ gridTemplateColumns: `repeat(5, minmax(0, 1fr))` }}>
-          {[0, 1, 2, 3, 4].map((i) => (
+        <div className="grid gap-0 p-4" style={{ gridTemplateColumns: `repeat(4, minmax(0, 1fr))` }}>
+          {[0, 1, 2, 3].map((i) => (
             <div key={i} className="p-4 space-y-3">
               <div className="h-4 w-20 bg-surface-tertiary rounded animate-pulse" />
               {[0, 1].map((j) => (
