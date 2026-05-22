@@ -4,6 +4,8 @@ import {
   type CreateAgentInput,
   type CreateSubagentInput,
   findInvalidSkillRef,
+  isBacklogItemPriority,
+  isBacklogItemStatus,
   isBoardType,
   isSprintStatus,
   isValidAgentRole,
@@ -27,6 +29,14 @@ import {
 } from "./agentRepo";
 import { closeSession, createSession, listSessions, reopenSession, updateSessionUsage } from "./agentSessionRepo";
 import { authMiddleware } from "./auth";
+import {
+  assertBacklogItemOwner,
+  assertBoardOwnerForBacklog,
+  createBacklogItem,
+  deleteBacklogItem,
+  listBacklogItemsByBoard,
+  updateBacklogItem,
+} from "./backlogRepo";
 import { createAuth } from "./betterAuth";
 import {
   createBoard,
@@ -1160,6 +1170,122 @@ api.patch("/api/sprints/:id", async (c) => {
   const sprint = await transitionSprint(c.env.DB, sprintId, body.status);
   if (!sprint) throw new HTTPException(404, { message: "Sprint not found" });
   return c.json(sprint);
+});
+
+// ─── Backlog Items ───
+
+api.post("/api/boards/:id/backlog-items", async (c) => {
+  const ownerId = c.get("ownerId");
+  const boardId = c.req.param("id");
+  await assertBoardOwnerForBacklog(c.env.DB, boardId, ownerId);
+
+  const body = await c.req.json<{ title?: unknown; description?: unknown; priority?: unknown; status?: unknown }>();
+
+  if (typeof body.title !== "string" || body.title.trim().length === 0) {
+    throw new HTTPException(400, { message: "title is required" });
+  }
+  if (typeof body.priority !== "string" || !isBacklogItemPriority(body.priority)) {
+    throw new HTTPException(400, { message: "priority must be one of: P0, P1, P2, P3" });
+  }
+
+  let status: "idea" | "in_planning" | undefined;
+  if (body.status !== undefined) {
+    if (typeof body.status !== "string" || (body.status !== "idea" && body.status !== "in_planning")) {
+      throw new HTTPException(400, { message: "status must be one of: idea, in_planning" });
+    }
+    status = body.status;
+  }
+
+  let description: string | null | undefined;
+  if (body.description !== undefined) {
+    if (body.description !== null && typeof body.description !== "string") {
+      throw new HTTPException(400, { message: "description must be a string or null" });
+    }
+    description = body.description;
+  }
+
+  const { actorId } = resolveActor(c);
+  const item = await createBacklogItem(
+    c.env.DB,
+    boardId,
+    {
+      title: body.title.trim(),
+      description: description ?? null,
+      priority: body.priority,
+      status,
+    },
+    actorId,
+  );
+  return c.json(item, 201);
+});
+
+api.get("/api/boards/:id/backlog-items", async (c) => {
+  const ownerId = c.get("ownerId");
+  const boardId = c.req.param("id");
+  await assertBoardOwnerForBacklog(c.env.DB, boardId, ownerId);
+  const status = c.req.query("status");
+  if (status !== undefined && !isBacklogItemStatus(status)) {
+    throw new HTTPException(400, { message: "Invalid status filter" });
+  }
+  const items = await listBacklogItemsByBoard(c.env.DB, boardId, status ? { status } : undefined);
+  return c.json(items);
+});
+
+api.get("/api/backlog-items/:id", async (c) => {
+  const ownerId = c.get("ownerId");
+  const id = c.req.param("id");
+  const item = await assertBacklogItemOwner(c.env.DB, id, ownerId);
+  return c.json(item);
+});
+
+api.patch("/api/backlog-items/:id", async (c) => {
+  const ownerId = c.get("ownerId");
+  const id = c.req.param("id");
+  await assertBacklogItemOwner(c.env.DB, id, ownerId);
+
+  const body = await c.req.json<{ title?: unknown; description?: unknown; priority?: unknown; status?: unknown }>();
+  const updates: {
+    title?: string;
+    description?: string | null;
+    priority?: "P0" | "P1" | "P2" | "P3";
+    status?: "idea" | "in_planning" | "consumed" | "dropped";
+  } = {};
+
+  if (body.title !== undefined) {
+    if (typeof body.title !== "string" || body.title.trim().length === 0) {
+      throw new HTTPException(400, { message: "title must be a non-empty string" });
+    }
+    updates.title = body.title.trim();
+  }
+  if (body.description !== undefined) {
+    if (body.description !== null && typeof body.description !== "string") {
+      throw new HTTPException(400, { message: "description must be a string or null" });
+    }
+    updates.description = body.description;
+  }
+  if (body.priority !== undefined) {
+    if (typeof body.priority !== "string" || !isBacklogItemPriority(body.priority)) {
+      throw new HTTPException(400, { message: "priority must be one of: P0, P1, P2, P3" });
+    }
+    updates.priority = body.priority;
+  }
+  if (body.status !== undefined) {
+    if (typeof body.status !== "string" || !isBacklogItemStatus(body.status)) {
+      throw new HTTPException(400, { message: "status must be one of: idea, in_planning, consumed, dropped" });
+    }
+    updates.status = body.status;
+  }
+
+  const item = await updateBacklogItem(c.env.DB, id, updates);
+  return c.json(item);
+});
+
+api.delete("/api/backlog-items/:id", async (c) => {
+  const ownerId = c.get("ownerId");
+  const id = c.req.param("id");
+  await assertBacklogItemOwner(c.env.DB, id, ownerId);
+  await deleteBacklogItem(c.env.DB, id);
+  return c.json({ ok: true });
 });
 
 // ─── GPG Keys ───
