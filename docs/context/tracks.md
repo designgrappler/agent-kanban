@@ -1,28 +1,24 @@
 # Agent Kanban — Active Tracks
 
-## Current Sprint: Sprint 11 — Dev-Experience Hardening + Drift Prevention (OPEN 2026-05-21)
+## Current Sprint: None — Sprint 11 CLOSED 2026-05-22; Sprint 12 not yet opened
 
-Full plan in `docs/context/plan.md` § "Current Sprint: Sprint 11". Bridges issued for all 5 tracks 2026-05-21.
+Sprint 11 closed 2026-05-22 with all four close-gate tracks (T1–T4) merged to main. T5 (design spec for kanban-level team agents) carried forward to Sprint 12 per the locked decision (design-only, zero merge requirement). Working-tree gate and Playwright gate both green at close (`/close-sprint` skill dogfooded — 92 passed, 8 skipped).
 
-| Track  | Goal                                                                                              | Type        | Status  |
-|--------|---------------------------------------------------------------------------------------------------|-------------|---------|
-| S11-T1 | `ak doctor` CLI command verifying gpg, D1 migration state, `.dev.vars` presence, worktree symlinks | Code        | DONE — Bandit PASS (re-run with full lefthook chain), merged + pushed to origin/main 2026-05-21 (`7436063`) |
-| S11-T2 | D1 migration auto-apply via `predev` hook + `postinstall` + `scripts/daemon-smoke-test.sh` preflight | Code      | DONE — Bandit PASS (lefthook chain), merged + pushed to origin/main 2026-05-21 (`5e6b4af`) |
-| S11-T3 | Pre-push Playwright gate (lefthook, `main` only) + `/close-sprint` skill (Playwright + fully clean tree) | Code + skill | DONE — Bandit PASS, merged + pushed to origin/main 2026-05-22 (`5356a0a`) |
-| S11-T4 | T22 daemon E2E smoke twice-green; harden 3 documented script bugs (`set -u` cleanup, opaque `json_query`, undocumented `<runtime>` arg) | Code  | DONE — Bandit PASS on testable scope, merged + pushed to origin/main 2026-05-22 (`3b07d97`). Twice-green deferred to first real operator run (env needed gpg + ak + .dev.vars symlink, exactly the gaps the new preflight surfaces). |
-| S11-T5 | Design spec ONLY for kanban-level non-cryptographic team agents (Peaches/Skylar/Bandit as in-board team members). No code. | Design | Bridge issued — parallel; zero merge requirement (slip ≠ block) |
-
-**Circuit-breaker note:** 5-track sprint is at the upper edge of stability rule. Mitigation: T5 is design-only with zero merge requirement — if it slips it carries forward to Sprint 12 and does NOT block sprint close. Hard close gate is T1+T2+T3+T4 merged green.
+See `Sprint 12 Candidates` below for queued work awaiting sprint open.
 
 ---
 
 ## Future Backlog (Sprint 12 Candidates)
 
-Items deferred from Sprint 11 planning. Some are pre-existing; others surfaced during Sprint 10 close.
+Items deferred from Sprint 11. Some are pre-existing; others surfaced during Sprint 10/11 close.
 
 ### Carry-forward from Sprint 11
 
-- **[P1] Investigate Agent OS install gap (team-as-UI-agents)** — **ABSORBED into S11-T5 design scope.** S11-T5 produces the design spec for kanban-level non-cryptographic team agents in Sprint 11. Sprint 12 implements on top of that spec. Original diagnosis at `/Users/I826932/.claude/projects/-Users-I826932-Developer-agent-kanban/memory/project_agent_os_role_drift.md` remains the source for the (a) symptom investigation; the longer-term migration to in-board team members is being designed in S11-T5.
+- **[P0] T5 — kanban-level team agents design + implementation** — design spec was drafted in `.worktrees/s11-t5-team-agents-design/docs/designs/team-agents.md` (~3270 words across 8 sections; recommended Option B data model + Option (b) auth). Sprint 12 reviews the spec, merges it to `docs/designs/`, then opens implementation tracks on top of it. This is the deepest structural fix for the role-isolation looseness named in the [execution-tightness-gaps memory](file:///Users/I826932/.claude/projects/-Users-I826932-Developer-agent-kanban/memory/feedback_execution_tightness_gaps.md).
+- **[P1] Twice-green proof for T4 daemon smoke** — T4 landed with Bandit PASS on testable scope, but the actual daemon round-trip (twice-green) was not run because the worktree env was missing gpg + ak CLI + `.dev.vars` symlink — exactly the gaps the new `ak doctor` preflight is designed to surface. First real operator run (Tim on a dev day, or CI when wired) becomes the de-facto twice-green test. If it fails, fix forward.
+- **[P2] Pre-existing `prepare: lefthook install` failure on `pnpm install --frozen-lockfile`** — surfaced during S11-T2 verification. Out of T2 scope. Worth diagnosing before next operator does a clean install.
+- **[P3] Redaction filter coverage** — S11-T4's `json_query` redaction filter covers `authorization`, `cookie`, `api_key`, `token` patterns plus `ak_*` and bare JWT. Bandit flagged that `refresh_token` and header-form `x-api-key` are not covered. Out of T4's explicit scope but worth hardening if real responses contain these.
+- **[P4] FATAL message stderr/stdout consistency in `scripts/daemon-smoke-test.sh`** — pre-existing FATAL prints at lines 148, 395, 400, 409, 424, 543 still go to stdout; new T4 code correctly uses stderr. Not regressed by T4, but inconsistent.
 
 ### Longstanding
 
@@ -31,7 +27,7 @@ Items deferred from Sprint 11 planning. Some are pre-existing; others surfaced d
 
 ---
 
-*Last updated: 2026-05-21 (Sprint 11 OPEN — five tracks: S11-T1 `ak doctor`, S11-T2 D1 migrate auto-apply, S11-T3 pre-push Playwright gate + `/close-sprint` skill, S11-T4 daemon smoke twice-green + 3 script bugs, S11-T5 design spec for kanban team agents. Bridges issued for all 5. [P1] Agent OS install gap absorbed into S11-T5. [P2] D1 migration drift becomes S11-T2.)*
+*Last updated: 2026-05-22 (Sprint 11 CLOSED — four close-gate tracks (S11-T1 `ak doctor`, S11-T2 D1 migrate auto-apply, S11-T3 pre-push gate + `/close-sprint` skill, S11-T4 daemon smoke hardening) merged green. T5 design spec carried to Sprint 12. `/close-sprint` skill dogfooded at close: working-tree clean + Playwright 92/0/8.)*
 
 ---
 
@@ -39,6 +35,18 @@ Items deferred from Sprint 11 planning. Some are pre-existing; others surfaced d
 
 **MANDATORY: Always use `scripts/worktree-add.sh`, never raw `git worktree add`.**
 See AGENTIC.md §4 for the full explanation. pnpm's hoisted `node_modules` are not present in raw worktrees — the script symlinks them.
+
+---
+
+## Archive: Sprint 11 Tracks (CLOSED 2026-05-22)
+
+| Track  | Goal                                                                                              | Status  |
+|--------|---------------------------------------------------------------------------------------------------|---------|
+| S11-T1 | `ak doctor` CLI command verifying gpg, D1 migration state, `.dev.vars` presence, worktree symlinks | DONE — Bandit PASS (re-run with full lefthook chain), merged + pushed to origin/main 2026-05-21 (`7436063`) |
+| S11-T2 | D1 migration auto-apply via `predev` hook + `postinstall` + `scripts/daemon-smoke-test.sh` preflight | DONE — Bandit PASS (lefthook chain), merged + pushed to origin/main 2026-05-21 (`5e6b4af`) |
+| S11-T3 | Pre-push Playwright gate (lefthook, `main` only) + `/close-sprint` skill (Playwright + fully clean tree) | DONE — Bandit PASS, merged + pushed to origin/main 2026-05-22 (`5356a0a`) |
+| S11-T4 | T22 daemon E2E smoke twice-green; harden 3 documented script bugs (`set -u` cleanup, opaque `json_query`, undocumented `<runtime>` arg) | DONE — Bandit PASS on testable scope, merged + pushed to origin/main 2026-05-22 (`3b07d97`). Twice-green deferred to first real operator run (env needed gpg + ak + .dev.vars symlink, exactly the gaps the new preflight surfaces). |
+| S11-T5 | Design spec ONLY for kanban-level non-cryptographic team agents (Peaches/Skylar/Bandit as in-board team members). No code. | DEFERRED to Sprint 12 — design draft in `.worktrees/s11-t5-team-agents-design/docs/designs/team-agents.md` per locked decision (design-only, zero merge requirement, slip ≠ block) |
 
 ---
 

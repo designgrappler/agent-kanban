@@ -2,7 +2,13 @@
 
 ---
 
-## Current Sprint: Sprint 11 — Dev-Experience Hardening + Drift Prevention (OPEN 2026-05-21)
+## Current Sprint: None — Sprint 11 CLOSED 2026-05-22; Sprint 12 not yet opened
+
+Sprint 11 closed 2026-05-22 with all four close-gate tracks (T1–T4) merged to main. T5 (kanban-level team agents design spec) carried forward to Sprint 12 per the locked decision (design-only, zero merge requirement). `/close-sprint` skill dogfooded at close: working-tree clean + Playwright 92 passed / 8 skipped. Full archive immediately below.
+
+---
+
+## Archive: Sprint 11 — Dev-Experience Hardening + Drift Prevention (CLOSED 2026-05-22)
 
 ### Objective
 
