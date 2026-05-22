@@ -2,9 +2,155 @@
 
 ---
 
-## Current Sprint: None — Sprint 11 CLOSED 2026-05-22; Sprint 12 not yet opened
+## Current Sprint: Sprint 12 — Team Members Phase 1 (kanban product) (OPEN 2026-05-22)
 
-Sprint 11 closed 2026-05-22 with all four close-gate tracks (T1–T4) merged to main. T5 (kanban-level team agents design spec) carried forward to Sprint 12 per the locked decision (design-only, zero merge requirement). `/close-sprint` skill dogfooded at close: working-tree clean + Playwright 92 passed / 8 skipped. Full archive immediately below.
+### Objective
+
+Land the team_members entity as kanban product work: Peaches/Skylar/Bandit become first-class non-cryptographic team members in the kanban itself, surfaced in the Agents page. Phase 1 only — table + seed + list endpoint + UI section. Action attribution (Phase 2) and `ak team sync` (Phase 2) are explicitly out of scope.
+
+**Strategic pivot 2026-05-22:** Sprint 12 was originally scoped with 7 tracks including meta-loop work (`/sprint-open` skill, env hygiene, smoke twice-green proof, FATAL consistency, refinement scoping). Tim chose to focus Sprint 12 on **kanban product work only**, then run a dedicated Agent OS install diagnostic in Sprint 13 before any further investment in team-agent or meta-loop tooling. Sprint 14 reacts to Sprint 13 findings and absorbs deferred items as appropriate.
+
+### Tracks
+
+| Track  | Goal                                                                                              | Type        | Status      |
+|--------|---------------------------------------------------------------------------------------------------|-------------|-------------|
+| S12-T1 | Review/finalize/merge S11-T5 design draft to `docs/designs/team-agents.md` (Tim resolves §8 open questions; Peaches edits to reflect calls; doc merges) | Paper close-gate | Bridge issued — lands first; gates T2 |
+| S12-T2 | `team_members` Phase 1 — migration, `BUILTIN_TEAM_MEMBERS` seed, `teamMemberRepo.ts`, list endpoint, `TeamCard` component, Team section in `AgentsPage` | Code close-gate | Bridge issued — depends on T1 merge |
+
+### Dependency Order
+
+```
+S12-T1 (review + merge design)  ──> S12-T2 (Phase 1 implementation)
+                                    needs the merged spec to point at
+```
+
+Sequential. T1 must merge to `main` first so T2's implementation reads the canonical `docs/designs/team-agents.md` rather than a worktree-internal draft.
+
+### Circuit-Breaker Risk
+
+One close-gate code track (T2). One paper close-gate (T1). Far under any active-track ceiling. The narrowness is intentional given the upcoming Sprint 13 diagnostic — keeping Sprint 12 tight reduces blast radius if the diagnostic surfaces install issues that affect the team_members work in flight.
+
+### Definition of Done (Sprint 12)
+
+- [ ] **S12-T1 (design review + merge):**
+  - [ ] Tim reads `.worktrees/s11-t5-team-agents-design/docs/designs/team-agents.md` and resolves all 8 open questions in §8 (username uniqueness, attribution-by-worker-agent, builtin set, owner-vs-board scope, presence semantics, route shape, `source_md` keep/drop, `attributed_team_member_id` placement).
+  - [ ] Peaches edits the doc inline to reflect each resolved call; the §8 questions are removed and replaced with the locked decisions in the relevant sections.
+  - [ ] File moves from `.worktrees/s11-t5-team-agents-design/docs/designs/team-agents.md` → `docs/designs/team-agents.md` on `main` via PR.
+  - [ ] **No Bandit review** — paper only, no code surface.
+  - [ ] Sentinel: `git diff --stat` shows only `docs/designs/team-agents.md` (and possibly the worktree's removal).
+- [ ] **S12-T2 (team_members Phase 1):**
+  - [ ] New migration `apps/web/migrations/NNNN_team_members.sql` creates the `team_members` table per the merged spec §2 (illustrative schema is the locked schema unless Tim's §8 calls change it).
+  - [ ] `BUILTIN_TEAM_MEMBERS` array added to `packages/shared/src/templates.ts` (mirroring `BUILTIN_TEMPLATES` shape) for `peaches`, `skylar`, `bandit` (or whatever set Tim's §8 question 3 resolves to).
+  - [ ] `apps/web/server/teamMemberRepo.ts` — new repo with `listTeamMembers(ownerId)`, `seedBuiltinTeamMembers(db, ownerId)`. No raw SQL outside this file.
+  - [ ] List endpoint `GET /api/team-members` (owner-scoped) wired in `apps/web/server/routes.ts` and `apps/web/worker/index.ts`.
+  - [ ] `seedBuiltinTeamMembers` invoked at the same point in the new-owner flow that `seedBuiltinAgents` is invoked.
+  - [ ] New `apps/web/src/components/TeamCard.tsx` per spec §3 visual treatment table (initials avatar, role-glyph, presence dot, `team` pill, NO `AgentIdenticon` on null public key).
+  - [ ] Team section added to `apps/web/src/routes/AgentsPage.tsx` rendering `TeamCard` instances above the Workers section in the Agents tab.
+  - [ ] Vitest unit + integration tests for repo + route (Miniflare D1, no mocks).
+  - [ ] **Excludes:** `attributed_team_member_id` columns on `task_actions`/`messages`/`tasks` (Phase 2); `ak team sync` CLI command (Phase 2); chat threads with team members (Phase 2). Spec §6 cutover Phase 2/3 is explicitly out of scope.
+  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` exits zero.
+  - [ ] Bandit PASS.
+- [ ] **Sprint close gate:** S12-T1 and S12-T2 merged to `main` and green via `/close-sprint`.
+
+### Deferred (was Sprint 12 T3-T7) — see Sprint 14 candidates in tracks.md
+
+The following tracks were drafted in the original Sprint 12 plan and are deferred per the strategic pivot. Their bridges are NOT in this file; if they are reactivated post-Sprint-13, fresh bridges will be issued at that time:
+
+- **`/sprint-open` skill** — symmetric counterpart to `/close-sprint`. May be reshaped or moot depending on Sprint 13 findings.
+- **Env hygiene combo** — `prepare: lefthook install` failure + redaction filter coverage. May be reshaped if diagnostic reveals install-related root cause.
+- **Twice-green proof for daemon smoke** — first real operator run; verification, not code.
+- **FATAL stderr/stdout consistency** in smoke script — pre-existing cosmetic.
+- **Peaches task-refinement workflow scoping** — design-only doc; longstanding backlog.
+
+---
+
+## Sprint 12 Bridges
+
+### HANDOFF BRIDGE — S12-T1
+**Topic:** Review/finalize/merge S11-T5 team-agents design draft — Tim resolves §8 open questions, Peaches edits doc to reflect, doc merges to `docs/designs/team-agents.md`
+**Track:** S12-T1
+**Specialist:** Peaches (self-dispatch — no Skylar handoff; Tim is the decision-maker for §8)
+**Static DNA Check:** Aligned — paper-only track. Zero source code, zero migrations, zero tests touched. Output is a single markdown file moving from a worktree-internal location to the canonical `docs/designs/` path. No Bandit review required (no code surface).
+**Dynamic DNA State:**
+- **Product Context:** S11-T5 produced a ~3270-word design draft at `.worktrees/s11-t5-team-agents-design/docs/designs/team-agents.md`. The draft recommends Option B (separate `team_members` table) for §2 data model and Option (b) (first-class entity, no auth credential) for §4 auth, but §8 lists 8 open questions that need Tim's call before the spec is build-ready. Until those are resolved and folded into the body, S12-T2 (Phase 1 implementation) cannot Bridge cleanly.
+- **Current Plan:** Sprint 12 → S12-T1 in this file.
+- **Execution Files:**
+  - `.worktrees/s11-t5-team-agents-design/docs/designs/team-agents.md` — read for §8 questions; edit inline to fold resolved decisions back into §2/§3/§4/§5/§6/§7; remove §8 once all questions are answered (or shrink it to a "decisions log" if Tim wants the trail preserved).
+  - `docs/designs/team-agents.md` — final destination on `main` after the draft is finalized.
+- **Migration Safety:** N/A — paper only.
+- **Security Review:** N/A — paper only. Spec already calls out non-goals (§7) so Phase 1 implementation can't accidentally couple team members to the cryptographic agent path.
+
+**Worktree Setup:** N/A — work happens in the existing `.worktrees/s11-t5-team-agents-design` worktree. After Tim signs off, the file is moved to `docs/designs/team-agents.md` on `main` via a small PR (Conductor commits).
+
+**The 8 open questions Tim must resolve (§8 of the draft):**
+
+**Tim resolved all 8 on 2026-05-22 — locked decisions below. Peaches folds these into §2-§7 and removes §8 (or compresses to a short decisions log).**
+
+1. **Username uniqueness — global or per-table?** **LOCKED: global** within `(owner_id, username)` across `agents` and `team_members`.
+2. **Can a worker agent attribute a message to a team member?** **LOCKED: no.** Only `user` (Better Auth session) and the orchestrator (the primary AI session) can set `attributed_team_member_id`. Worker agents (cryptographic, scoped to their tasks) cannot. Preserves the role-drift fix.
+3. **Builtin team-member set — exactly which roles ship?** **LOCKED: ship three rows** in `seedBuiltinTeamMembers`: `peaches` (architect), `skylar` (specialist), `bandit` (reviewer). Mirrors the existing `.claude/agents/*.md` files. Shipping all three (rather than collapsing to one "orchestrator") is what makes the role-isolation fix visible in the UI.
+4. **Per-owner vs per-board scope.** **LOCKED: per-owner.** One Peaches per workspace, serving all boards.
+5. **Presence semantics — manual or automatic?** **LOCKED: drop presence entirely from Phase 1.** No `presence` column on `team_members`. Worker agents keep their daemon-derived presence; team members render without a status dot. Add later if a real use case emerges.
+6. **Detail page route shape.** **LOCKED: split routes.** `/agents/:id` for cryptographic agents, `/team/:username` for team members. Each page renders only the affordances that apply.
+7. **`source_md` column — keep or drop?** **LOCKED: replaced.** Drop the `source_md TEXT` blob column entirely. Instead: (a) parse the `.claude/agents/*.md` file at seed time to extract structured display metadata (display name, role description, capabilities) into typed columns on `team_members`; (b) add an `md_path TEXT` column storing the relative path (e.g., `.claude/agents/peaches.md`) so the UI can offer a convenience "open file" link for the user to review/edit the source. No raw markdown blob storage.
+8. **Action attribution column placement.** **LOCKED: yes, also on `tasks`.** `attributed_team_member_id` lives on `task_actions`, `messages`, AND `tasks` (per-table, nullable, foreign-key to `team_members.id`).
+
+**Verification:**
+1. ~~Tim reads the draft top-to-bottom and gives a YES/specific-edits answer for each of the 8 questions above.~~ — DONE 2026-05-22.
+2. Peaches edits §2/§3/§4/§5/§6/§7 inline to fold the resolved decisions into the body — the spec reads as a settled design, not as a draft with TBDs. Specifically:
+   - §2 (data model): drop `presence` column; replace `source_md` with `md_path` + parsed metadata columns; confirm `attributed_team_member_id` columns on `task_actions`, `messages`, AND `tasks`.
+   - §3 (UI surface): drop the presence dot for team members from card visual treatment.
+   - §4 (auth model): codify "user + orchestrator can attribute; worker agents cannot."
+   - §5 (lifecycle): remove auto-away language.
+   - §6 (migration path): `BUILTIN_TEAM_MEMBERS` seed = three rows for peaches/skylar/bandit; seed reads `.claude/agents/{role}.md` to populate parsed metadata + `md_path`.
+   - §7 (non-goals): explicitly exclude presence from Phase 1.
+3. §8 is removed (or compressed to a short decisions log preserving the trail of locked answers).
+4. `git diff --stat` from the worktree shows ONLY `docs/designs/team-agents.md` (Sentinel: any other file modified is a scope violation).
+5. File moves to `docs/designs/team-agents.md` on `main` via PR. No Bandit review — paper only.
+6. **Slip is NOT acceptable for sprint close** — unlike S11-T5, this track IS a close-gate because S12-T2 depends on it. If the review cycle stalls, surface to Conductor immediately.
+
+**Next Step:** Peaches — Tim's §8 answers are locked above. Edit the worktree-internal draft to fold each into the relevant section per the verification list. Run the Sentinel diff check. Hand to Tim for one final read-through. Once Tim confirms it reads as a settled spec, surface to Conductor for the PR that moves the file to `docs/designs/team-agents.md` on `main`. Do NOT commit; Conductor commits.
+
+---
+
+### HANDOFF BRIDGE — S12-T2
+**Topic:** `team_members` Phase 1 — migration, `BUILTIN_TEAM_MEMBERS` seed, `teamMemberRepo.ts`, `GET /api/team-members` endpoint, `TeamCard` component, Team section in `AgentsPage`
+**Track:** S12-T2
+**Specialist:** Skylar
+**Depends on:** S12-T1 merged to `main` (so the Bridge points at canonical `docs/designs/team-agents.md` and the §8 calls are locked).
+**Static DNA Check:** Aligned with AGENTIC.md — D1 migration, repo layer pattern (no raw SQL outside `teamMemberRepo.ts`), Hono route, Miniflare-backed tests, React + Tailwind + shadcn/ui frontend. New table; no auth changes (Phase 1 has no `attributed_team_member_id` and no `IdentityType` extension); no new identity types. Owner-scoping via `team_members.owner_id` matching the multi-tenant primitive used by `agents`, `boards`, `repositories`, `machines`.
+**Dynamic DNA State:**
+- **Product Context:** Phase 1 of the team-agents implementation. Lands the `team_members` table, seeds the three builtin team members for every owner, exposes a list endpoint, and renders a Team section in the AgentsPage so Tim can see Peaches/Skylar/Bandit as first-class kanban entities. Action attribution columns, `ak team sync`, chat — all explicitly Phase 2, NOT in this track.
+- **Current Plan:** Sprint 12 → S12-T2 in this file.
+- **Execution Files (per merged spec §6 Phase 1 details):**
+  - `apps/web/migrations/NNNN_team_members.sql` — NEW. Schema per spec §2 illustrative SQL (or whatever the merged spec lists after T1's edits). Columns: `id`, `owner_id`, `name`, `username`, `bio`, `soul`, `role`, `handoff_to`, `skills`, `source_md` (if Tim's §8 q7 says keep), `builtin`, `version`, `presence`, `last_seen_at`, `created_at`, `updated_at`. Indexes: `idx_team_members_owner` and `idx_team_members_owner_username_version` per spec.
+  - `packages/shared/src/templates.ts` — add `BUILTIN_TEAM_MEMBERS` array mirroring `BUILTIN_TEMPLATES` shape; entries for `peaches`, `skylar`, `bandit` (or whatever Tim's §8 q3 resolves to). Soul/bio/role/skills sourced from `.claude/agents/peaches.md|skylar.md|bandit.md` for fidelity with the existing role costumes.
+  - `packages/shared/src/types.ts` — new `TeamMember` interface (NOT extending `Agent`; sibling type per spec §2 Option B).
+  - `apps/web/server/teamMemberRepo.ts` — NEW. `listTeamMembers(ownerId)`, `seedBuiltinTeamMembers(db, ownerId)`. No raw SQL outside this file (AGENTIC.md repo layer rule).
+  - `apps/web/server/routes.ts` — add `GET /api/team-members` (owner-scoped) — register in the existing routes module.
+  - `apps/web/worker/index.ts` — wire route if `routes.ts` doesn't auto-register.
+  - Owner-bootstrap site (find via `grep seedBuiltinAgents apps/web/server/`) — add `seedBuiltinTeamMembers(db, ownerId)` call alongside the existing `seedBuiltinAgents` call.
+  - `apps/web/src/components/TeamCard.tsx` — NEW. Per spec §3 visual treatment table: initials avatar (NOT `AgentIdenticon`), role-glyph badge in corner (compass=architect, wrench=specialist, shield=reviewer), presence dot (green=available, amber=busy, gray=away), `team` pill replacing fingerprint chip, no runtime/model chip, footer shows `handoff_to` + `last_seen_at`. **Hard rule: never call `AgentIdenticon publicKey={null}`.**
+  - `apps/web/src/routes/AgentsPage.tsx` — add a `Team` collapsible `<section>` block above the existing Workers section in the Agents tab (NOT a new top-level tab; spec §3 explicitly recommends single-tab grouping).
+  - `apps/web/src/hooks/` — new `useTeamMembers()` hook (TanStack Query, `["team-members", ownerId]`).
+  - `apps/web/src/lib/api.ts` — `api.teamMembers.list()` method.
+  - Tests: `tests/teamMemberRepo.test.ts` and `tests/teamMemberRoutes.test.ts` — new (Miniflare D1, no mocks).
+
+**Migration Safety:** Reversible — new table, no FK from existing tables (Phase 2 adds `attributed_team_member_id` FKs; Phase 1 does not). Drop column / drop table to roll back.
+**Security Review:** SCHEMA — new owner-scoped table. No auth surface change (no new `IdentityType`, no new route rules beyond a standard owner-scoped GET). Tim acceptance traces to the merged spec (S12-T1).
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s12-t2-team-members track/s12-t2-team-members-phase1`
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — all green.
+2. Migration applied locally; `sqlite3 .wrangler/state/v3/d1/.../db.sqlite "SELECT username, role, builtin FROM team_members;"` returns the three builtin rows for the test owner after the bootstrap path runs.
+3. `curl .../api/team-members` (with a user session) returns the three builtins; same call with a different owner's session returns ZERO rows (owner-scoping verified).
+4. **AgentsPage rendering:** open `/agents` in the browser; the Team section appears above Workers; three `TeamCard`s render with initials avatars (NOT identicons), role-glyphs, and presence dots; clicking a card opens the route shape Tim's §8 q6 specified.
+5. **Crypto agents unaffected:** existing `AgentCard` rendering, `agentRepo.listAgents` query, `agent_sessions` aggregations, fingerprint chips — all unchanged. `git diff apps/web/server/agentRepo.ts apps/web/src/components/AgentCard.tsx apps/web/src/components/AgentIdenticon.tsx` empty.
+6. **Phase 2 NOT touched:** `git diff` shows ZERO modifications to `task_actions` or `messages` schema; no `attributed_team_member_id` column anywhere; no `ak team sync` CLI command.
+7. Bandit QA — confirm Phase 1 scope discipline; confirm new owner-scoped route follows existing auth pattern; confirm no `AgentIdenticon` is ever called with `publicKey={null}`.
+
+**Next Step:** Skylar — wait for S12-T1 to merge to `main`. Read the merged `docs/designs/team-agents.md` end-to-end (§2 schema, §3 UI, §6 Phase 1 details) so the implementation matches the spec exactly. Read `apps/web/server/agentRepo.ts` and `apps/web/server/routes.ts` for the repo + route patterns; read `packages/shared/src/templates.ts` for the `BUILTIN_TEMPLATES` shape; read `apps/web/src/routes/AgentsPage.tsx` and `apps/web/src/components/AgentCard.tsx` for the UI integration point. Build migration → repo → route → seed → types → hook → API client → component → page section in that order. Run the verification matrix. Invoke Bandit.
 
 ---
 

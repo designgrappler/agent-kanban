@@ -1,33 +1,51 @@
 # Agent Kanban — Active Tracks
 
-## Current Sprint: None — Sprint 11 CLOSED 2026-05-22; Sprint 12 not yet opened
+## Current Sprint: Sprint 12 — Team Members Phase 1 (kanban product) (OPEN 2026-05-22)
 
-Sprint 11 closed 2026-05-22 with all four close-gate tracks (T1–T4) merged to main. T5 (design spec for kanban-level team agents) carried forward to Sprint 12 per the locked decision (design-only, zero merge requirement). Working-tree gate and Playwright gate both green at close (`/close-sprint` skill dogfooded — 92 passed, 8 skipped).
+Land the team_members entity in the kanban itself: Peaches/Skylar/Bandit become first-class non-cryptographic team members in the UI and database. Phase 1 only (table + seed + list + UI section); Phase 2 (action attribution, `ak team sync`, chat) is explicitly out of scope. **All meta-loop work (Agent OS install diagnostic, `/sprint-open` skill, env hygiene, smoke twice-green) is deferred to Sprint 13 (diagnostic) and Sprint 14 (react to findings).**
 
-See `Sprint 12 Candidates` below for queued work awaiting sprint open.
+| Track  | Goal                                                                                              | Type        | Status      |
+|--------|---------------------------------------------------------------------------------------------------|-------------|-------------|
+| S12-T1 | Review/finalize/merge S11-T5 design draft to `docs/designs/team-agents.md` (Tim resolves §8 open questions; Peaches edits to reflect calls; doc merges) | Paper close-gate | Bridge issued — lands first; gates T2 |
+| S12-T2 | `team_members` Phase 1 — migration, `BUILTIN_TEAM_MEMBERS` seed, `teamMemberRepo.ts`, list endpoint, `TeamCard` component, Team section in `AgentsPage` | Code close-gate | Bridge issued — depends on T1 merge |
+
+**Sprint close gate:** S12-T1 and S12-T2 merged to `main` and green. Full Sprint 12 plan + Bridges in `docs/context/plan.md`. **Strategic note:** Tim chose 2026-05-22 to focus on kanban product first, then run a deep Agent OS install diagnostic before any further team-agent or meta-loop investment.
 
 ---
 
-## Future Backlog (Sprint 12 Candidates)
+## Future Backlog
 
-Items deferred from Sprint 11. Some are pre-existing; others surfaced during Sprint 10/11 close.
+### Sprint 13 (planned) — Agent OS install diagnostic
 
-### Carry-forward from Sprint 11
+A dedicated investigation sprint following S12 close. Goal: determine whether the Agent OS install on this fork was successful, and if not, identify where it went wrong. Investigation only — no code changes. Outcomes inform Sprint 14 scope.
 
-- **[P0] T5 — kanban-level team agents design + implementation** — design spec was drafted in `.worktrees/s11-t5-team-agents-design/docs/designs/team-agents.md` (~3270 words across 8 sections; recommended Option B data model + Option (b) auth). Sprint 12 reviews the spec, merges it to `docs/designs/`, then opens implementation tracks on top of it. This is the deepest structural fix for the role-isolation looseness named in the [execution-tightness-gaps memory](file:///Users/I826932/.claude/projects/-Users-I826932-Developer-agent-kanban/memory/feedback_execution_tightness_gaps.md).
-- **[P1] Twice-green proof for T4 daemon smoke** — T4 landed with Bandit PASS on testable scope, but the actual daemon round-trip (twice-green) was not run because the worktree env was missing gpg + ak CLI + `.dev.vars` symlink — exactly the gaps the new `ak doctor` preflight is designed to surface. First real operator run (Tim on a dev day, or CI when wired) becomes the de-facto twice-green test. If it fails, fix forward.
-- **[P2] Pre-existing `prepare: lefthook install` failure on `pnpm install --frozen-lockfile`** — surfaced during S11-T2 verification. Out of T2 scope. Worth diagnosing before next operator does a clean install.
-- **[P3] Redaction filter coverage** — S11-T4's `json_query` redaction filter covers `authorization`, `cookie`, `api_key`, `token` patterns plus `ak_*` and bare JWT. Bandit flagged that `refresh_token` and header-form `x-api-key` are not covered. Out of T4's explicit scope but worth hardening if real responses contain these.
-- **[P4] FATAL message stderr/stdout consistency in `scripts/daemon-smoke-test.sh`** — pre-existing FATAL prints at lines 148, 395, 400, 409, 424, 543 still go to stdout; new T4 code correctly uses stderr. Not regressed by T4, but inconsistent.
+Surfacing questions for the diagnostic (preliminary, not exhaustive):
+- Why don't `.claude/agents/peaches.md|skylar.md|bandit.md` load as `subagent_type` invocations on this fork, while `playwright-test-*` agents in the same directory do?
+- Is the install of `~/.claude/skills/start-sprint.md` and the missing `/sprint-open` skill a symptom of the same root cause, or independent?
+- What does the canonical Agent OS install produce that we're missing here?
+- Is the looseness named in [[execution-tightness-gaps]] explained by install drift, or is it independent?
+
+Reference memory: [[agent-os-role-drift-investigation]].
+
+### Sprint 14 (provisional) — Carry-forward from S11/S12
+
+Items deferred from Sprint 12's original plan; will be re-prioritized after the S13 diagnostic lands. Some may become moot or reshape based on diagnostic findings.
+
+- **`/sprint-open` skill** (was S12-T3) — project-level skill mirroring `/close-sprint`. Symmetric gap surfaced when `/close-sprint` referenced it.
+- **Env hygiene combo** (was S12-T4) — (a) diagnose + fix `prepare: lefthook install` failure on `pnpm install --frozen-lockfile`; (b) extend `json_query` redaction filter (`refresh_token` + `x-api-key`).
+- **Twice-green proof for daemon smoke** (was S12-T5; was S11 carry-forward) — first real operator run; verification, not code.
+- **FATAL stderr/stdout consistency** in `scripts/daemon-smoke-test.sh` (was S12-T6) — pre-existing inconsistency at lines 148, 395, 400, 409, 424, 543.
+- **Peaches task-refinement workflow scoping** (was S12-T7; longstanding board task `d5kv1hfw1d2v`) — design-only doc.
+- **team_members Phase 2** — `attributed_team_member_id` columns on `task_actions`/`messages`/`tasks`; `ak team sync` CLI command; richer chat-with-team-member UX. Gated by S12-T2 Phase 1 landing.
+- **Claude Code subagent loader gap** — separate from team_members work. The fact that Peaches/Skylar/Bandit don't register as `subagent_type` on this fork is its own concern; team_members entity does NOT fix the loader. Likely consumed by S13 diagnostic.
 
 ### Longstanding
 
-- **Peaches task-refinement workflow** — when Tim describes a task in non-engineering language, Peaches should refine it into engineering-aligned cards before Skylar executes. Concept; needs scoping. Board task `d5kv1hfw1d2v`.
 - ~~**`useAgentPresence` choreography for `released`/`timed_out`**~~ — DROPPED 2026-05-21. Card movement for both actions already works via T24's `STATUS_CHANGING_ACTIONS` invalidation in `useBoard.ts`. Tim confirmed agent-drag animation is not required: cards move on their own as close to real time as the SSE poll allows. No further work needed.
 
 ---
 
-*Last updated: 2026-05-22 (Sprint 11 CLOSED — four close-gate tracks (S11-T1 `ak doctor`, S11-T2 D1 migrate auto-apply, S11-T3 pre-push gate + `/close-sprint` skill, S11-T4 daemon smoke hardening) merged green. T5 design spec carried to Sprint 12. `/close-sprint` skill dogfooded at close: working-tree clean + Playwright 92/0/8.)*
+*Last updated: 2026-05-22 (Sprint 12 OPEN — rescoped from 7 tracks to 2 close-gate (S12-T1 design merge, S12-T2 team_members Phase 1) per strategic pivot: kanban product first, then Sprint 13 = dedicated Agent OS install diagnostic, then Sprint 14 = react to findings + carry-forward.)*
 
 ---
 
