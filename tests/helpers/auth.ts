@@ -1,9 +1,25 @@
-import { execFileSync } from "node:child_process";
-import { readdirSync } from "node:fs";
+import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, Page } from "@playwright/test";
 
-const d1Dir = join(process.cwd(), "apps/web/.wrangler/state/v3/d1/miniflare-D1DatabaseObject");
+// AUTH_SECRET source of truth: env var first (CI), then apps/web/.dev.vars (local dev).
+// Better Auth signs email-verification tokens with this secret using HS256, so a test-side
+// forge of the same shape is accepted by the verification endpoint and round-trips through
+// the same D1 handle the running server uses (no external sqlite3 write needed).
+const AUTH_SECRET = resolveAuthSecret();
+
+function resolveAuthSecret(): string {
+  if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
+  try {
+    const raw = readFileSync(join(process.cwd(), "apps/web/.dev.vars"), "utf8");
+    const match = raw.match(/^\s*AUTH_SECRET\s*=\s*"?([^"\r\n]+)"?\s*$/m);
+    if (match?.[1]) return match[1];
+  } catch {
+    // fall through
+  }
+  throw new Error("AUTH_SECRET not found: set $AUTH_SECRET or define it in apps/web/.dev.vars");
+}
 
 /**
  * Signs up a new user, marks email verified, and establishes a browser session
@@ -23,7 +39,7 @@ export async function signUpVerified(page: Page, email: string, name = "Test Use
   });
   if (!res.ok) throw new Error(`Sign up failed: ${res.status} ${await res.text()}`);
 
-  markEmailVerified(email);
+  await verifyEmail(page, email);
 
   const signInRes = await fetch(`${origin}/api/auth/sign-in/email`, {
     method: "POST",
@@ -68,7 +84,7 @@ export async function signUpAndGetBoard(page: Page, email: string, name = "Test 
   });
   if (!res.ok) throw new Error(`Sign up failed: ${res.status} ${await res.text()}`);
 
-  markEmailVerified(email);
+  await verifyEmail(page, email);
   const signInRes = await fetch(`${origin}/api/auth/sign-in/email`, {
     method: "POST",
     headers: {
@@ -117,14 +133,37 @@ async function firstBoardId(page: Page): Promise<string | null> {
   });
 }
 
-function markEmailVerified(email: string) {
-  execFileSync("sqlite3", ["-cmd", ".timeout 10000", d1DatabasePath(), `UPDATE user SET emailVerified = 1 WHERE email = '${sqlString(email)}';`]);
+/**
+ * Drives the real Better Auth email verification endpoint with a forged HS256 token
+ * signed with AUTH_SECRET — the same secret the server uses to issue verification tokens.
+ * This goes through the running server's open D1 handle (unlike an external sqlite3 write,
+ * which Miniflare's open handle would not see) and clears post-verify cookies so the
+ * subsequent sign-in path is the only authenticated session in the page context.
+ */
+async function verifyEmail(page: Page, email: string): Promise<void> {
+  const origin = new URL(page.url()).origin;
+  const token = verificationToken(email);
+  const res = await fetch(`${origin}/api/auth/verify-email?token=${encodeURIComponent(token)}`, {
+    method: "GET",
+    redirect: "manual",
+  });
+  // Better Auth returns 302 on successful verification; treat any 2xx/3xx as success.
+  if (res.status >= 400) {
+    throw new Error(`Email verification failed: ${res.status} ${await res.text()}`);
+  }
 }
 
-function d1DatabasePath(): string {
-  const db = readdirSync(d1Dir).find((file) => file.endsWith(".sqlite") && file !== "metadata.sqlite");
-  if (!db) throw new Error("Local D1 database not found");
-  return join(d1Dir, db);
+function verificationToken(email: string): string {
+  const now = Math.floor(Date.now() / 1000);
+  const payload = { email, iat: now, exp: now + 60 * 60 };
+  const encodedHeader = base64Url(JSON.stringify({ alg: "HS256" }));
+  const encodedPayload = base64Url(JSON.stringify(payload));
+  const signature = createHmac("sha256", AUTH_SECRET).update(`${encodedHeader}.${encodedPayload}`).digest("base64url");
+  return `${encodedHeader}.${encodedPayload}.${signature}`;
+}
+
+function base64Url(value: string): string {
+  return Buffer.from(value).toString("base64url");
 }
 
 function sessionCookie(res: Response): { name: string; value: string } | null {
@@ -133,8 +172,4 @@ function sessionCookie(res: Response): { name: string; value: string } | null {
   if (!pair) return null;
   const [name, value] = pair.split("=");
   return { name, value: decodeURIComponent(value) };
-}
-
-function sqlString(value: string): string {
-  return value.replace(/'/g, "''");
 }
