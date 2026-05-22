@@ -6,6 +6,44 @@ import { expect, Page } from "@playwright/test";
 const d1Dir = join(process.cwd(), "apps/web/.wrangler/state/v3/d1/miniflare-D1DatabaseObject");
 
 /**
+ * Signs up a new user, marks email verified, and establishes a browser session
+ * (cookie + auth-token in localStorage) WITHOUT navigating through onboarding or
+ * board creation. Use this when the test drives navigation itself (e.g. mocked routes).
+ */
+export async function signUpVerified(page: Page, email: string, name = "Test User"): Promise<void> {
+  await page.goto("/auth");
+  const origin = new URL(page.url()).origin;
+  const res = await fetch(`${origin}/api/auth/sign-up/email`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin,
+    },
+    body: JSON.stringify({ name, email, password: "password123" }),
+  });
+  if (!res.ok) throw new Error(`Sign up failed: ${res.status} ${await res.text()}`);
+
+  markEmailVerified(email);
+
+  const signInRes = await fetch(`${origin}/api/auth/sign-in/email`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin,
+    },
+    body: JSON.stringify({ email, password: "password123" }),
+  });
+  if (!signInRes.ok) throw new Error(`Sign in failed: ${signInRes.status} ${await signInRes.text()}`);
+
+  const token = signInRes.headers.get("set-auth-token");
+  const cookie = sessionCookie(signInRes);
+  if (!token || !cookie) throw new Error("Sign in did not return a session");
+
+  await page.context().addCookies([{ name: cookie.name, value: cookie.value, url: origin }]);
+  await page.evaluate((authToken) => localStorage.setItem("auth-token", authToken), token);
+}
+
+/**
  * Signs up a new user and completes the onboarding flow (2 steps),
  * then navigates to the actual board page at /boards/:id.
  *

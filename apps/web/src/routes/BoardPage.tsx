@@ -6,18 +6,20 @@ import { FilterBar } from "../components/FilterBar";
 import { AgentAvatarOverlay } from "../components/FloatingAvatar";
 import { Header } from "../components/Header";
 import { KanbanColumn } from "../components/KanbanColumn";
+import { SprintHeader } from "../components/SprintHeader";
 import { TaskChatDrawer } from "../components/TaskChatDrawer";
 import { TaskDetail } from "../components/TaskDetail";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { useAgentPresence } from "../hooks/useAgentPresence";
 import { useBoard } from "../hooks/useBoard";
+import { useActiveSprint } from "../hooks/useSprint";
 import { api } from "../lib/api";
 
 const TASK_STATUSES = ["todo", "in_progress", "in_review", "done"] as const;
 
 const TASK_STATUS_LABELS: Record<string, string> = {
-  todo: "Todo",
+  todo: "Tracks",
   in_progress: "In Progress",
   in_review: "In Review",
   done: "Done",
@@ -26,6 +28,7 @@ const TASK_STATUS_LABELS: Record<string, string> = {
 export function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
   const { board, loading, error, refresh } = useBoard(boardId);
+  const { data: activeSprint } = useActiveSprint(boardId);
   const avatars = useAgentPresence(boardId);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
@@ -138,6 +141,7 @@ export function BoardPage() {
     <div className="h-screen overflow-hidden bg-surface-primary flex flex-col">
       <Header />
       {board.theme && <p className="text-xs text-content-tertiary px-5 pt-2 pb-0 mt-0.5">{board.theme}</p>}
+      <SprintHeader boardId={board.id} tasks={board.tasks ?? []} />
       <FilterBar
         repositories={repositories}
         labels={board.labels ?? []}
@@ -183,6 +187,8 @@ export function BoardPage() {
             onAddTask={col.status === "todo" ? handleAddTask : undefined}
             onEditTask={handleEditTask}
             onDeleteTask={handleDeleteTask}
+            sprintNumber={activeSprint?.number ?? null}
+            activeSprintId={activeSprint?.id ?? null}
           />
         ))}
       </div>
@@ -201,6 +207,8 @@ export function BoardPage() {
               onAddTask={col.status === "todo" ? handleAddTask : undefined}
               onEditTask={handleEditTask}
               onDeleteTask={handleDeleteTask}
+              sprintNumber={activeSprint?.number ?? null}
+              activeSprintId={activeSprint?.id ?? null}
             />
           ))}
       </div>
