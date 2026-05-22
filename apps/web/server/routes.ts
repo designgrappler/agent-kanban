@@ -99,6 +99,7 @@ import {
   reviewTask,
   updateTask,
 } from "./taskRepo";
+import { getTeamMemberByUsername, listTeamMembers } from "./teamMemberRepo";
 import type { Env } from "./types";
 
 const api = new Hono<{ Bindings: Env }>();
@@ -732,6 +733,19 @@ api.delete("/api/subagents/:id", async (c) => {
   await assertSubagentNotReferenced(c.env.DB, ownerId, subagent.id);
   await deleteSubagent(c.env.DB, subagent.id, ownerId);
   return c.json({ ok: true });
+});
+
+// ─── Team Members ───
+
+api.get("/api/team-members", async (c) => {
+  const members = await listTeamMembers(c.env.DB, c.get("ownerId"));
+  return c.json(members);
+});
+
+api.get("/api/team-members/:username", async (c) => {
+  const member = await getTeamMemberByUsername(c.env.DB, c.get("ownerId"), c.req.param("username"));
+  if (!member) throw new HTTPException(404, { message: "Team member not found" });
+  return c.json(member);
 });
 
 // ─── Agent Sessions ───

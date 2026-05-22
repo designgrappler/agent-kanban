@@ -46,6 +46,7 @@ export async function applyMigrations(db: D1Database) {
     "0024_task_plan_url.sql",
     "0025_sprints.sql",
     "0026_backlog_items.sql",
+    "0027_team_members.sql",
   ];
   for (const file of files) {
     const sql = readFileSync(join(MIGRATIONS_DIR, file), "utf-8");

@@ -4,8 +4,10 @@ import { Link } from "react-router-dom";
 import { AgentIdenticon } from "../components/AgentIdenticon";
 import { Header } from "../components/Header";
 import { formatRelative } from "../components/TaskDetailFields";
+import { TeamCard } from "../components/TeamCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useAgents, useSubagents } from "../hooks/useAgents";
+import { useTeamMembers } from "../hooks/useTeamMembers";
 import { agentColor, agentColorRgb, agentFingerprint } from "../lib/agentIdentity";
 import { cn } from "../lib/utils";
 
@@ -32,6 +34,7 @@ function formatCost(microUsd: number): string {
 export function AgentsPage() {
   const { agents, loading: agentsLoading } = useAgents();
   const { subagents, loading: subagentsLoading } = useSubagents();
+  const { teamMembers, loading: teamLoading } = useTeamMembers();
   const latestAgents = (agents as AgentWithActivity[]).filter((agent) => agent.version === "latest");
   const online = latestAgents.filter((agent) => agent.status === "online").length;
 
@@ -46,6 +49,7 @@ export function AgentsPage() {
               <span>
                 {online}/{latestAgents.length} online
               </span>
+              <span>{teamMembers.length} team</span>
               <span>{subagents.length} sub-agents</span>
             </div>
           </div>
@@ -69,18 +73,44 @@ export function AgentsPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="agents">
-            {agentsLoading ? (
-              <AgentGridSkeleton />
-            ) : latestAgents.length === 0 ? (
-              <EmptyState label="No latest agents yet." action="Create your first agent" href="/agents/new" />
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {latestAgents.map((agent) => (
-                  <AgentCard key={agent.id} agent={agent} />
-                ))}
+          <TabsContent value="agents" className="space-y-8">
+            <section aria-labelledby="team-section-heading" className="space-y-3">
+              <div className="flex items-baseline justify-between">
+                <h2 id="team-section-heading" className="font-mono text-xs uppercase tracking-[0.18em] text-content-tertiary">
+                  Team <span className="ml-1 text-content-tertiary/70">{teamMembers.length}</span>
+                </h2>
               </div>
-            )}
+              {teamLoading ? (
+                <AgentGridSkeleton />
+              ) : teamMembers.length === 0 ? (
+                <EmptyState label="No team members yet." />
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {teamMembers.map((member) => (
+                    <TeamCard key={member.id} member={member} />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section aria-labelledby="workers-section-heading" className="space-y-3">
+              <div className="flex items-baseline justify-between">
+                <h2 id="workers-section-heading" className="font-mono text-xs uppercase tracking-[0.18em] text-content-tertiary">
+                  Workers <span className="ml-1 text-content-tertiary/70">{latestAgents.length}</span>
+                </h2>
+              </div>
+              {agentsLoading ? (
+                <AgentGridSkeleton />
+              ) : latestAgents.length === 0 ? (
+                <EmptyState label="No latest agents yet." action="Create your first agent" href="/agents/new" />
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {latestAgents.map((agent) => (
+                    <AgentCard key={agent.id} agent={agent} />
+                  ))}
+                </div>
+              )}
+            </section>
           </TabsContent>
 
           <TabsContent value="subagents">

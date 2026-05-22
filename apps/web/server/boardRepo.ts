@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import { customAlphabet } from "nanoid";
 import { seedBuiltinAgents } from "./agentRepo";
 import { type D1, newId, parseJsonFields } from "./db";
+import { seedBuiltinTeamMembers } from "./teamMemberRepo";
 
 const nanoidSlug = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 10);
 
@@ -53,6 +54,7 @@ export async function createBoard(
     .run();
 
   await seedBuiltinAgents(db, ownerId);
+  await seedBuiltinTeamMembers(db, ownerId);
   await createBoardLabel(db, id, { name: "ready-for-planning", color: "#6366F1", description: "Marks a task as ready for AI-assisted planning." });
 
   const board = await db.prepare("SELECT * FROM boards WHERE id = ?").bind(id).first<Board>();

@@ -110,6 +110,10 @@ export const api = {
     update: (id: string, body: Partial<CreateSubagentInput>) => request<any>("PATCH", `/subagents/${id}`, body),
     delete: (id: string) => request<void>("DELETE", `/subagents/${id}`),
   },
+  teamMembers: {
+    list: () => request<any[]>("GET", "/team-members"),
+    get: (username: string) => request<any>("GET", `/team-members/${username}`),
+  },
   machines: {
     list: () => request<any[]>("GET", "/machines"),
     get: (id: string) => request<any>("GET", `/machines/${id}`),
