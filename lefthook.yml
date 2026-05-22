@@ -10,3 +10,10 @@ pre-commit:
 
     - name: test
       run: npx vitest run
+
+pre-push:
+  jobs:
+    - name: e2e-gate
+      only:
+        - ref: main
+      run: pnpm test:e2e:gate

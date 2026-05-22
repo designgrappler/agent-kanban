@@ -48,6 +48,7 @@ test-results/
 /wrangler.jsonc
 
 # agent skills (managed by daemon)
-.claude/skills/
+.claude/skills/*
+!.claude/skills/close-sprint/
 .agents/
 skills-lock.json
