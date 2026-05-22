@@ -6,6 +6,8 @@
       "!**/dist",
       "!**/node_modules",
       "!**/.wrangler",
+      "!**/.worktrees",
+      "!**/.claude",
       "!**/pnpm-lock.yaml",
       "!**/*.min.js",
       "!**/*.min.css",
