@@ -30,6 +30,6 @@ test.describe("Board Page", () => {
     // expect: The board columns appear after data loads
     const columnGrid = page.locator(".hidden.md\\:grid");
     await expect(columnGrid).toBeVisible();
-    await expect(columnGrid.getByText("Todo")).toBeVisible();
+    await expect(columnGrid.getByText("Tracks", { exact: true })).toBeVisible();
   });
 });

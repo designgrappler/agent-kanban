@@ -1,15 +1,14 @@
 import { expect, test } from "@playwright/test";
+import { signUpVerified } from "../helpers/auth";
 
 test.describe("Board Page", () => {
   test("Onboarding flow — 2 steps: create board then add machine", async ({ page }) => {
-    await page.goto("/auth");
-    await page.getByRole("button", { name: "Sign up" }).click();
-    await page.locator('input[placeholder="Name"]').fill("New User");
-    await page.locator('input[type="email"]').fill(`onboarding_${Date.now()}@example.com`);
-    await page.locator('input[type="password"]').fill("password123");
-    await page.getByRole("button", { name: "Sign Up" }).click();
-
-    await page.waitForURL(/\/boards\/_new/);
+    // Sign up + verify the email so we have an authenticated session, then drive
+    // the onboarding flow ourselves (sign-up no longer auto-redirects to /boards/new
+    // because email verification is required before the session is granted).
+    await signUpVerified(page, `onboarding_${Date.now()}@example.com`, "New User");
+    await page.goto("/boards/new");
+    await expect(page).toHaveURL(/\/boards\/new/);
 
     // expect: Onboarding heading and tagline
     await expect(page.getByRole("heading", { name: "Agent Kanban" })).toBeVisible();
@@ -20,7 +19,7 @@ test.describe("Board Page", () => {
     await expect(dots).toHaveCount(2);
 
     // expect: Board name input pre-filled with "My Board"
-    const boardNameInput = page.getByRole("textbox");
+    const boardNameInput = page.getByRole("textbox").first();
     await expect(boardNameInput).toHaveValue("My Board");
 
     // Create board

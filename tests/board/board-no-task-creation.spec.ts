@@ -8,7 +8,7 @@ test.describe("Board Page", () => {
     // expect: Board is loaded with columns
     const columnGrid = page.locator(".hidden.md\\:grid");
     await expect(columnGrid).toBeVisible();
-    await expect(columnGrid.getByText("Todo")).toBeVisible();
+    await expect(columnGrid.getByText("Tracks", { exact: true })).toBeVisible();
 
     // expect: No "+ Task" button anywhere on the board
     await expect(page.getByRole("button", { name: "+ Task" })).not.toBeVisible();

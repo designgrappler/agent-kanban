@@ -21,8 +21,9 @@ test.describe("Agents Page", () => {
     await expect(agentCard.getByRole("heading", { name: "Quality Goalkeeper" })).toBeVisible();
     await expect(agentCard.getByText(/Offline|Online/)).toBeVisible();
 
-    // expect: Stats strip with task count, token count, and cost
-    await expect(agentCard.getByText(/tasks/)).toBeVisible();
+    // expect: Stats strip with active/queued task counts, token count, and cost
+    await expect(agentCard.getByText(/active/)).toBeVisible();
+    await expect(agentCard.getByText(/queued/)).toBeVisible();
     await expect(agentCard.getByText(/tok/)).toBeVisible();
     await expect(agentCard.getByText(/\$/)).toBeVisible();
   });

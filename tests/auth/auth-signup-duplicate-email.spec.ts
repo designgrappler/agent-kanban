@@ -19,8 +19,9 @@ test.describe("Authentication", () => {
     await page.locator('input[type="password"]').fill(password);
     await page.getByRole("button", { name: "Sign Up" }).click();
 
-    // Wait for first registration to succeed and navigate away from /auth
-    await page.waitForURL("**/*", { timeout: 10000 });
+    // First sign-up lands on the email-verification handoff because the new account
+    // requires email verification before being granted a session.
+    await expect(page.getByText("Verify your email")).toBeVisible();
 
     // Clear session so we can return to /auth as unauthenticated
     await page.context().clearCookies();
@@ -32,14 +33,18 @@ test.describe("Authentication", () => {
     // expect: Sign-up form is displayed
     await expect(page.getByText("Create a new account")).toBeVisible();
 
-    // --- Step 3: Enter the same email again to trigger duplicate error ---
+    // --- Step 3: Enter the same email again ---
     await page.locator('input[placeholder="Name"]').fill("Existing User");
     await page.locator('input[type="email"]').fill(uniqueEmail);
     await page.locator('input[type="password"]').fill(password);
     await page.getByRole("button", { name: "Sign Up" }).click();
 
-    // expect: An error message is displayed indicating the email is already in use or sign-up failed
-    await expect(page.locator("p.text-error")).toBeVisible({ timeout: 10000 });
+    // expect: The duplicate-email path also routes to the verification handoff
+    // (Better Auth with requireEmailVerification re-issues a verification email
+    // rather than surfacing an inline error to avoid leaking account existence).
+    await expect(page.getByText("Verify your email")).toBeVisible();
+    await expect(page.getByText(uniqueEmail)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Resend verification email" })).toBeVisible();
 
     // expect: The user remains on the /auth page
     await expect(page).toHaveURL(/\/auth/);
