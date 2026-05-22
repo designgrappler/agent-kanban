@@ -149,6 +149,31 @@ export async function createAgent(db: D1, ownerId: string, input: CreateAgentInp
   return upsertLatestAgent(db, prepared);
 }
 
+/**
+ * Cross-table username uniqueness: agents and team_members share a username
+ * namespace within (owner_id, username). Per spec §2 (decision #1), SQLite
+ * cannot express cross-table UNIQUE, so this check is enforced application
+ * side. Mirrors `usernameExistsForOwner` on teamMemberRepo for the reverse
+ * direction.
+ */
+export class AgentUsernameConflictError extends Error {
+  constructor(
+    public readonly username: string,
+    public readonly source: "team_members",
+  ) {
+    super(`Username "${username}" is already taken by an existing team member`);
+    this.name = "AgentUsernameConflictError";
+  }
+}
+
+export async function assertUsernameNotInTeamMembers(db: D1, ownerId: string, username: string): Promise<void> {
+  const inTeam = await db
+    .prepare("SELECT 1 FROM team_members WHERE owner_id = ? AND username = ? LIMIT 1")
+    .bind(ownerId, username)
+    .first<{ 1: number }>();
+  if (inTeam) throw new AgentUsernameConflictError(username, "team_members");
+}
+
 export async function seedBuiltinAgents(db: D1, ownerId: string): Promise<void> {
   const existing = await db.prepare("SELECT role FROM agents WHERE owner_id = ? AND builtin = 1").bind(ownerId).all<{ role: string }>();
   const existingRoles = new Set(existing.results.map((a) => a.role));
@@ -393,7 +418,15 @@ async function updateLatestFromPrepared(
 
 export async function upsertLatestAgent(db: D1, agent: PreparedAgent, extras?: { mailboxToken?: string; gpgSubkeyId?: string }): Promise<Agent> {
   const latest = await getLatestAgentSnapshot(db, agent.username, agent.owner_id);
-  if (!latest) return insertAgent(db, agent, extras);
+  if (!latest) {
+    // New agent: enforce reverse cross-table uniqueness against team_members.
+    // Updates to an existing agent skip this check because the username is
+    // already owned by an agent row, so a team_members collision would have
+    // been blocked when the team member was created (forward direction
+    // enforced by usernameExistsForOwner in teamMemberRepo).
+    await assertUsernameNotInTeamMembers(db, agent.owner_id, agent.username);
+    return insertAgent(db, agent, extras);
+  }
 
   const now = new Date().toISOString();
   if (profileJson(latest) === profileJson(agent)) {

@@ -28,6 +28,7 @@ const MIGRATIONS_BEFORE_SUBAGENTS = [
   "0018_agent_subagents.sql",
   "0019_agent_versions.sql",
   "0020_board_labels.sql",
+  "0027_team_members.sql",
 ] as const;
 
 let mf: Miniflare;

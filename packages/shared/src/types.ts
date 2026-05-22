@@ -287,6 +287,31 @@ export interface Subagent {
   updated_at: string;
 }
 
+// ─── Team Member ───
+//
+// Non-cryptographic team members (peaches/skylar/bandit). Sibling to Agent —
+// NOT an extension. Team members never authenticate; they are a labeling layer
+// on user actions. No public_key, no fingerprint, no runtime, no presence.
+export interface TeamMember {
+  id: string;
+  owner_id: string;
+  name: string;
+  username: string;
+  display_name: string | null;
+  description: string | null;
+  bio: string | null;
+  soul: string | null;
+  role: string | null;
+  capabilities: string[] | null;
+  handoff_to: string[] | null;
+  skills: string[] | null;
+  md_path: string | null;
+  builtin: number;
+  version: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── Agent Session ───
 
 export type AgentSessionStatus = "active" | "closed";

@@ -1,5 +1,6 @@
 import {
   AGENT_RUNTIMES,
+  type Agent,
   type AgentRuntime,
   type CreateAgentInput,
   type CreateSubagentInput,
@@ -17,6 +18,7 @@ import {
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
+  AgentUsernameConflictError,
   createAgentIdentity,
   deleteAgent,
   getAgent,
@@ -99,6 +101,7 @@ import {
   reviewTask,
   updateTask,
 } from "./taskRepo";
+import { getTeamMemberByUsername, listTeamMembers } from "./teamMemberRepo";
 import type { Env } from "./types";
 
 const api = new Hono<{ Bindings: Env }>();
@@ -628,10 +631,18 @@ api.post("/api/agents", async (c) => {
   const mailboxToken: string | undefined = undefined;
 
   // Single atomic insert with all fields
-  const agent = await upsertLatestAgent(c.env.DB, prepared, {
-    mailboxToken,
-    gpgSubkeyId: latestIdentity ? undefined : identity.id.toUpperCase(),
-  });
+  let agent: Agent;
+  try {
+    agent = await upsertLatestAgent(c.env.DB, prepared, {
+      mailboxToken,
+      gpgSubkeyId: latestIdentity ? undefined : identity.id.toUpperCase(),
+    });
+  } catch (err) {
+    if (err instanceof AgentUsernameConflictError) {
+      throw new HTTPException(409, { message: `Username "${err.username}" is already taken` });
+    }
+    throw err;
+  }
 
   // GitHub sync — best-effort, skip if not connected
   try {
@@ -732,6 +743,19 @@ api.delete("/api/subagents/:id", async (c) => {
   await assertSubagentNotReferenced(c.env.DB, ownerId, subagent.id);
   await deleteSubagent(c.env.DB, subagent.id, ownerId);
   return c.json({ ok: true });
+});
+
+// ─── Team Members ───
+
+api.get("/api/team-members", async (c) => {
+  const members = await listTeamMembers(c.env.DB, c.get("ownerId"));
+  return c.json(members);
+});
+
+api.get("/api/team-members/:username", async (c) => {
+  const member = await getTeamMemberByUsername(c.env.DB, c.get("ownerId"), c.req.param("username"));
+  if (!member) throw new HTTPException(404, { message: "Team member not found" });
+  return c.json(member);
 });
 
 // ─── Agent Sessions ───

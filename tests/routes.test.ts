@@ -423,6 +423,15 @@ describe("routes", () => {
     expect(body.error.message).toContain('Leader agent for runtime "claude" already exists');
   });
 
+  it("POST /api/agents rejects username already taken by a team member (reverse cross-table uniqueness)", async () => {
+    const { createTeamMember } = await import("../apps/web/server/teamMemberRepo");
+    await createTeamMember(env.DB, userId, { name: "Peaches Reverse", username: "peaches-reverse" });
+    const res = await apiRequest("POST", "/api/agents", { username: "peaches-reverse", runtime: "claude" }, apiKey);
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as any;
+    expect(body.error.message).toContain('"peaches-reverse"');
+  });
+
   it("GET /api/agents returns email derived from username", async () => {
     const res = await apiRequest("GET", "/api/agents", undefined, apiKey);
     expect(res.status).toBe(200);

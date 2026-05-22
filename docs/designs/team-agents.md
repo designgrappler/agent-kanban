@@ -136,6 +136,8 @@ Crucially: **never call `AgentIdenticon publicKey={null}`** — fall back to a d
 
 Detail pages use a **routing split**: `/agents/:id` for cryptographic agents, `/team/:username` for team members. Each page renders only the affordances that apply to its kind — the agents page shows sessions, tokens, GPG key, and mailbox; the team page shows handoff edges, attribution count, and a convenience "open `.md` source" link via `md_path`. The route shape encodes the entity type so neither page has to branch on `kind` internally.
 
+The `/team/:username` page is backed by `GET /api/team-members/:username`, which is owner-scoped (resolved via the standard auth middleware), returns 404 for an unknown username in the caller's owner scope, and mirrors the response shape of `GET /api/agents/:id` minus the crypto-only fields. The list endpoint `GET /api/team-members` powers the AgentsPage Team section.
+
 ---
 
 ## 4. Auth model

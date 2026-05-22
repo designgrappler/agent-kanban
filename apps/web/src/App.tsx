@@ -25,6 +25,7 @@ import { NewBoardPage } from "./routes/NewBoardPage";
 import { OnboardingPage } from "./routes/OnboardingPage";
 import { RepositoriesPage } from "./routes/RepositoriesPage";
 import { SharePage } from "./routes/SharePage";
+import { TeamMemberDetailPage } from "./routes/TeamMemberDetailPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { data: session, isPending } = useSession();
@@ -155,6 +156,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <AgentEditPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/team/:username"
+          element={
+            <ProtectedRoute>
+              <TeamMemberDetailPage />
             </ProtectedRoute>
           }
         />
