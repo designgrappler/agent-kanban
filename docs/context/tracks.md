@@ -1,27 +1,22 @@
 # Agent Kanban — Active Tracks
 
-## Current Sprint: Sprint 9 — Backlog Tab (OPENED 2026-05-21)
+## Current Sprint: None — Sprint 9 CLOSED 2026-05-21; Sprint 10 not yet opened
 
-> Per north-star architecture (`docs/context/north-star.md` §UI Changes / §Data Model). Adds the **Backlog** tab as the entry point of the core loop: `Backlog → Plan → Sprint → Tracks → Done`. Introduces `backlog_items` table, board-scoped backlog CRUD, and a Backlog tab in the global header. Multi-select + "Create plan" trigger lands in Sprint 10.
+Sprint 9 closed 2026-05-21 with all three tracks merged to main. Sprint 9 archive: `docs/archive/historical_tracks.md` (track table) and `docs/archive/sprint-archive.md` (full plan block + Bridges + close-out).
 
-| Track | Goal | Status |
-|---|---|---|
-| S9-T1 | Backend + Schema: `backlog_items` migration, repo, Hono routes, auth rules, shared types | DONE — Bandit PASS |
-| S9-T2 | CLI: `ak backlog add\|list\|update\|delete` (depends on S9-T1) | DONE — Bandit PASS |
-| S9-T3 | Frontend: `/boards/:id/backlog` page, components, `useBacklogItems` hook, Playwright spec | VERIFIED — awaiting commit (E2E waived; helper broken since 2026-05-04, see Sprint 10 P0) |
-
-See `docs/context/plan.md` for Definition of Done, Dependency Order, and the three Handoff Bridges issued 2026-05-21.
+See `Sprint 10 Candidates` below for queued work awaiting sprint open.
 
 ---
 
 ## Future Backlog (post-Sprint 9)
 
-Items not in Sprint 9. Some unblock once S9 lands; others are pre-existing.
+Items not yet sprint-scoped. Some unblock once specific work lands; others are pre-existing.
 
 ### Sprint 10 Candidates
 
 - **[P0] Fix Playwright auth helper for `requireEmailVerification`** — the helper at `tests/helpers/auth.ts:120-122` writes `emailVerified=1` via the external `sqlite3` CLI; Miniflare's open D1 handle does not see those writes, so every spec calling `signUpAndGetBoard` (and the `signUpVerified` variant) fails with `EMAIL_NOT_VERIFIED` 403. Affected: every Playwright spec calling `signUpAndGetBoard` since 2026-05-04 (confirmed via sibling spec `tests/header/header-elements.spec.ts` failing identically to S9-T3's `tests/e2e/backlog.spec.ts`). Causal commit: `a4f8f76 feat(auth): require email verification` — `requireEmailVerification: true` hardcoded at `apps/web/server/betterAuth.ts:25`. Recommended fix path: replace external sqlite3 write with Better Auth admin-API call, or harvest the verification token via a test mailer. Do NOT gate `requireEmailVerification` on env — that changes production behavior. Blocked S9-T3 from producing E2E proof; landing this unblocks every E2E spec going forward.
 - **[P1] Investigate Agent OS install gap (team-as-UI-agents)** — surfaced 2026-05-21. Two related symptoms: (a) the project's `.claude/agents/peaches.md|skylar.md|bandit.md` are not loading as Claude Code `subagent_type` invocations, while the playwright agents in the same directory do load (diagnostic gap); (b) Tim's longer-term direction is for the team to appear in the Agents UI of the kanban board itself as non-cryptographic project-team members, not as Claude Code subagents at all. Investigation scope, not a fix-it ticket — confirm the diagnostic asymmetry, then decide whether to repair the local subagent loader, migrate to in-board agents, or both. Full diagnosis at `/Users/I826932/.claude/projects/-Users-I826932-Developer-agent-kanban/memory/project_agent_os_role_drift.md`.
+- **[P2] Biome v2.x lint warnings cleanup** — surfaced during S9-T3 verification on 2026-05-21. Two cosmetic warnings, exit code 0, hooks pass — Skylar deliberately did not fix to avoid scope creep. (a) `biome.json` `$schema` declares `2.4.8`; installed CLI is `2.4.10` — schema version drift causing a non-blocking warning. Bump to current. (b) `useBiomeIgnoreFolder` rule wants `!.worktrees` and `!.claude` (no `/**` suffix); current file uses `!.worktrees/**` and `!.claude/**` — semantically equivalent but flags the warning. Drop the `/**` suffix on both folder ignores. Pure cosmetic cleanup; ship in any low-risk slot.
 
 ### Longstanding
 
@@ -33,7 +28,7 @@ Items not in Sprint 9. Some unblock once S9 lands; others are pre-existing.
 
 ---
 
-*Last updated: 2026-05-21 (S9-T1/S9-T2 DONE Bandit PASS, merged; S9-T3 VERIFIED gates green, E2E waived per Tim, awaiting merge — Playwright helper repair queued as Sprint 10 P0; Agent OS install gap queued as Sprint 10 P1. Sprint 8 CLOSED — all three tracks DONE Bandit PASS, merged to main.)*
+*Last updated: 2026-05-21 (Sprint 9 CLOSED — all three tracks (S9-T1, S9-T2, S9-T3) merged to main; full plan block moved to `docs/archive/sprint-archive.md`, track table moved to `docs/archive/historical_tracks.md`. Sprint 10 Candidates: P0 Playwright helper repair, P1 Agent OS install gap, P2 Biome lint warnings cleanup.)*
 
 ---
 
