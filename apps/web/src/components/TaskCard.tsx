@@ -14,12 +14,18 @@ interface TaskCardProps {
   onEdit?: (task: any) => void;
   onDelete?: (task: any) => void;
   isNew?: boolean;
+  sprintNumber?: number | null;
+  activeSprintId?: string | null;
 }
 
-export function TaskCard({ task, labels = [], onClick, onAgentClick, onEdit, onDelete, isNew }: TaskCardProps) {
+export function TaskCard({ task, labels = [], onClick, onAgentClick, onEdit, onDelete, isNew, sprintNumber, activeSprintId }: TaskCardProps) {
   const isAssigned = !!task.assigned_to;
   const isWorking = isAssigned && !!task.agent_public_key && task.status === "in_progress" && !task.glow_suppressed;
   const labelByName = new Map(labels.map((label) => [label.name, label]));
+  const trackChip =
+    task.sprint_id && task.track_number != null && sprintNumber != null && task.sprint_id === activeSprintId
+      ? `S${sprintNumber}-T${task.track_number}`
+      : null;
 
   return (
     <div
@@ -56,6 +62,14 @@ export function TaskCard({ task, labels = [], onClick, onAgentClick, onEdit, onD
       <div className="w-full min-w-0 text-left">
         <div className="flex items-start gap-1.5">
           <span className="font-mono text-[11px] leading-snug text-content-tertiary shrink-0">#{task.seq}</span>
+          {trackChip && (
+            <span
+              data-testid="task-track-chip"
+              className="font-mono text-[10px] leading-snug px-1.5 py-0.5 rounded bg-surface-tertiary text-content-tertiary shrink-0"
+            >
+              {trackChip}
+            </span>
+          )}
           <div className="line-clamp-2 text-[13px] font-medium leading-snug text-content-primary flex-1 min-w-0" title={task.title}>
             {task.title}
           </div>

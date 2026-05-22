@@ -10,6 +10,8 @@ interface KanbanColumnProps {
   onAddTask?: () => void;
   onEditTask?: (task: any) => void;
   onDeleteTask?: (task: any) => void;
+  sprintNumber?: number | null;
+  activeSprintId?: string | null;
 }
 
 const COLUMN_ICONS: Record<string, typeof Circle> = {
@@ -19,7 +21,17 @@ const COLUMN_ICONS: Record<string, typeof Circle> = {
   done: CheckCircle2,
 };
 
-export function KanbanColumn({ column, labels = [], onTaskClick, onAgentClick, onAddTask, onEditTask, onDeleteTask }: KanbanColumnProps) {
+export function KanbanColumn({
+  column,
+  labels = [],
+  onTaskClick,
+  onAgentClick,
+  onAddTask,
+  onEditTask,
+  onDeleteTask,
+  sprintNumber,
+  activeSprintId,
+}: KanbanColumnProps) {
   const Icon = COLUMN_ICONS[column.status] ?? Circle;
 
   return (
@@ -52,6 +64,8 @@ export function KanbanColumn({ column, labels = [], onTaskClick, onAgentClick, o
                   onAgentClick={onAgentClick}
                   onEdit={task.status === "todo" ? onEditTask : undefined}
                   onDelete={task.status === "todo" ? onDeleteTask : undefined}
+                  sprintNumber={sprintNumber}
+                  activeSprintId={activeSprintId}
                 />
               </motion.div>
             ))}

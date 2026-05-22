@@ -1,4 +1,4 @@
-import type { AgentRuntime, CreateSubagentInput } from "@agent-kanban/shared";
+import type { AgentRuntime, CreateSprintInput, CreateSubagentInput, Sprint, SprintStatus } from "@agent-kanban/shared";
 import { getAuthToken, refreshAuthToken } from "./auth-client";
 
 const API_BASE = "/api";
@@ -128,6 +128,15 @@ export const api = {
     list: () => request<any[]>("GET", "/repositories"),
     create: (input: { name: string; url: string }) => request<any>("POST", "/repositories", input),
     delete: (id: string) => request<void>("DELETE", `/repositories/${id}`),
+  },
+  sprints: {
+    list: (boardId: string, opts?: { status?: SprintStatus }) => {
+      const qs = opts?.status ? `?status=${encodeURIComponent(opts.status)}` : "";
+      return request<Sprint[]>("GET", `/boards/${boardId}/sprints${qs}`);
+    },
+    getActive: (boardId: string) => request<Sprint>("GET", `/boards/${boardId}/sprints/active`),
+    create: (boardId: string, body: CreateSprintInput) => request<Sprint>("POST", `/boards/${boardId}/sprints`, body),
+    transition: (sprintId: string, status: SprintStatus) => request<Sprint>("PATCH", `/sprints/${sprintId}`, { status }),
   },
   admin: {
     getStats: () => request<any>("GET", "/admin/stats"),
