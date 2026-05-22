@@ -1,8 +1,8 @@
 import type { TaskActionType } from "@agent-kanban/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import { useBoardSSE } from "../contexts/BoardSSEContext";
 import { api } from "../lib/api";
-import { useBoardSSE } from "./useBoardSSE";
 
 const LAST_BOARD_KEY = "ak-last-board";
 
@@ -53,9 +53,10 @@ export function useBoard(boardId: string | undefined) {
 
   // Real-time updates: invalidate the board query when SSE reports a status-changing
   // task action so cards move columns within ~2s instead of waiting for the polling
-  // interval. This opens a second EventSource alongside useAgentPresence's; React
-  // Query dedupes the resulting refetches.
-  const { events } = useBoardSSE(boardId);
+  // interval. Reads events from the shared `BoardSSEProvider` mounted on `BoardPage`,
+  // so the EventSource is shared with `useAgentPresence` (one connection per board
+  // mount, not one per consuming hook).
+  const { events } = useBoardSSE();
   const processedRef = useRef(0);
   useEffect(() => {
     if (!boardId) return;
