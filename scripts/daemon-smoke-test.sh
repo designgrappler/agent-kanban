@@ -266,6 +266,9 @@ fail() { echo "  FAIL: $1"; FAIL=$((FAIL + 1)); }
 
 echo "=== Daemon Smoke Test ==="
 
+# Preflight: ensure local D1 schema matches committed migrations.
+pnpm --filter @agent-kanban/web db:migrate >/dev/null
+
 if [ -z "$BOARD_ID" ]; then BOARD_ID="$(discover_board 2>/dev/null || true)"; fi
 if [ -z "$BOARD_ID" ]; then BOARD_ID="$(create_board)"; fi
 if [ -z "$REPO_ID" ]; then REPO_ID="$(discover_repo 2>/dev/null || true)"; fi
