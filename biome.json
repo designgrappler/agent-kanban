@@ -1,13 +1,13 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.8/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.4.10/schema.json",
   "files": {
     "includes": [
       "**",
       "!**/dist",
       "!**/node_modules",
       "!**/.wrangler",
-      "!.worktrees/**",
-      "!.claude/**",
+      "!.worktrees",
+      "!.claude",
       "!**/playwright-report",
       "!**/test-results",
       "!**/pnpm-lock.yaml",
