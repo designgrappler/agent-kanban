@@ -4,6 +4,7 @@ import { createClient, createIdentity, getIdentity } from "./agent/leader.js";
 import { detectRuntime } from "./agent/runtime.js";
 import { registerAgentCommand } from "./commands/agent.js";
 import { registerApplyCommand } from "./commands/apply.js";
+import { registerBacklogCommand } from "./commands/backlog.js";
 import { registerCreateCommand } from "./commands/create.js";
 import { registerDeleteCommand } from "./commands/delete.js";
 import { registerDescribeCommand } from "./commands/describe.js";
@@ -52,6 +53,15 @@ const helpSections: [string, [string, string][]][] = [
       ["sprint open <theme>", "Open a new sprint (planning → active)"],
       ["sprint close [id]", "Close the active sprint (or by id)"],
       ["sprint list", "List sprints on a board"],
+    ],
+  ],
+  [
+    "Backlog",
+    [
+      ["backlog add <title>", "Add a backlog item (--priority required)"],
+      ["backlog list", "List backlog items on a board"],
+      ["backlog update <id>", "Update a backlog item"],
+      ["backlog delete <id>", "Delete a backlog item"],
     ],
   ],
   [
@@ -207,6 +217,7 @@ registerDeleteCommand(program);
 registerApplyCommand(program);
 registerWaitCommand(program);
 registerSprintCommand(program);
+registerBacklogCommand(program);
 
 // ─── Identity ───
 
