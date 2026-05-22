@@ -1,4 +1,4 @@
-import type { BoardWithTasks, MachineRuntime, UsageInfo } from "@agent-kanban/shared";
+import type { BoardWithTasks, MachineRuntime, Sprint, SprintStatus, UsageInfo } from "@agent-kanban/shared";
 import { getVersion } from "../version.js";
 
 export class ApiError extends Error {
@@ -250,5 +250,23 @@ export abstract class ApiClient {
   getMessages(taskId: string, since?: string) {
     const qs = since ? `?since=${encodeURIComponent(since)}` : "";
     return this.request<any[]>("GET", `/api/tasks/${taskId}/messages${qs}`);
+  }
+
+  // Sprints
+  createSprint(boardId: string, body: { theme: string }) {
+    return this.request<Sprint>("POST", `/api/boards/${boardId}/sprints`, body);
+  }
+  listSprints(boardId: string, params?: { status?: SprintStatus }) {
+    const qs = params?.status ? `?status=${encodeURIComponent(params.status)}` : "";
+    return this.request<Sprint[]>("GET", `/api/boards/${boardId}/sprints${qs}`);
+  }
+  getActiveSprint(boardId: string) {
+    return this.request<Sprint>("GET", `/api/boards/${boardId}/sprints/active`);
+  }
+  getSprint(sprintId: string) {
+    return this.request<Sprint>("GET", `/api/sprints/${sprintId}`);
+  }
+  transitionSprint(sprintId: string, status: SprintStatus) {
+    return this.request<Sprint>("PATCH", `/api/sprints/${sprintId}`, { status });
   }
 }

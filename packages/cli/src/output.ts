@@ -230,6 +230,33 @@ export function formatSubagent(agent: any): string {
   return lines.join("\n");
 }
 
+export function formatSprint(sprint: any): string {
+  const lines: string[] = [];
+  const label = `S${sprint.number}`;
+  lines.push(`${label}: ${sprint.theme}`);
+  lines.push(`  ID:         ${sprint.id}`);
+  lines.push(`  Board:      ${sprint.board_id}`);
+  lines.push(`  Status:     ${sprint.status}`);
+  lines.push(`  Opened:     ${sprint.opened_at}`);
+  if (sprint.closed_at) lines.push(`  Closed:     ${sprint.closed_at}`);
+  if (sprint.created_by) lines.push(`  Created by: ${sprint.created_by}`);
+  return lines.join("\n");
+}
+
+export function formatSprintList(sprints: any[]): string {
+  if (sprints.length === 0) return "No sprints found.";
+
+  const lines = sprints.map((s) => {
+    const label = `S${s.number}`.padEnd(5);
+    const status = `[${s.status}]`.padEnd(12);
+    const opened = s.opened_at ? new Date(s.opened_at).toISOString().slice(0, 10) : "";
+    const closed = s.closed_at ? ` closed=${new Date(s.closed_at).toISOString().slice(0, 10)}` : "";
+    return `  ${s.id}  ${label} ${status} opened=${opened}${closed}  ${s.theme}`.trimEnd();
+  });
+
+  return lines.join("\n");
+}
+
 export function formatBoard(board: any): string {
   const columnOrder = ["todo", "in_progress", "in_review", "done", "cancelled"];
   const columnLabels: Record<string, string> = {

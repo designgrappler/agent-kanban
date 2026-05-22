@@ -8,6 +8,7 @@ import { registerCreateCommand } from "./commands/create.js";
 import { registerDeleteCommand } from "./commands/delete.js";
 import { registerDescribeCommand } from "./commands/describe.js";
 import { registerGetCommand } from "./commands/get.js";
+import { registerSprintCommand } from "./commands/sprint.js";
 import { registerLogsCommand, registerRestartCommand, registerStartCommand, registerStatusCommand, registerStopCommand } from "./commands/start.js";
 import { registerUpdateCommand } from "./commands/update.js";
 import { registerUpgradeCommand } from "./commands/upgrade.js";
@@ -45,6 +46,14 @@ const helpSections: [string, [string, string][]][] = [
     ],
   ],
   ["Agent", [["agent diff <from> [to]", "Compare agent versions"]]],
+  [
+    "Sprint",
+    [
+      ["sprint open <theme>", "Open a new sprint (planning → active)"],
+      ["sprint close [id]", "Close the active sprint (or by id)"],
+      ["sprint list", "List sprints on a board"],
+    ],
+  ],
   [
     "Wait (block until condition)",
     [
@@ -197,6 +206,7 @@ registerUpdateCommand(program);
 registerDeleteCommand(program);
 registerApplyCommand(program);
 registerWaitCommand(program);
+registerSprintCommand(program);
 
 // ─── Identity ───
 
