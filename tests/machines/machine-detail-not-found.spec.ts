@@ -10,8 +10,10 @@ test.describe("Machines Page", () => {
     await signUpAndGetBoard(page, `machine_notfound_${Date.now()}@example.com`);
     await page.goto("/machines/nonexistent-id");
 
-    // expect: The page shows 'Machine not found.' text in the content area
-    await expect(page.getByText("Machine not found.")).toBeVisible();
+    // expect: The page shows 'Machine not found.' text in the content area.
+    // The fetch retries 3x via react-query default before settling, so allow more
+    // time than the default 5s assertion timeout for the not-found state to render.
+    await expect(page.getByText("Machine not found.")).toBeVisible({ timeout: 15000 });
 
     // expect: The header is still rendered correctly
     await expect(page.getByRole("banner")).toBeVisible();

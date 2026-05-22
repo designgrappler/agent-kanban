@@ -1,14 +1,11 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
+import { signUpVerified } from "../helpers/auth";
 
 async function signUp(page: Page, email: string): Promise<void> {
-  await page.goto("/auth");
-  await page.getByRole("button", { name: "Sign up" }).click();
-  await page.locator('input[placeholder="Name"]').fill("Test User");
-  await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill("password123");
-  await page.getByRole("button", { name: "Sign Up" }).click();
-  await page.waitForFunction(() => Boolean(localStorage.getItem("auth-token")));
+  // Email verification is required before a session is granted, so sign up via
+  // the shared helper (which forges a verification token and signs in).
+  await signUpVerified(page, email, "Test User");
 }
 
 const now = "2026-05-04T12:00:00.000Z";

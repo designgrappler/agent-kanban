@@ -1,7 +1,24 @@
 import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 
-const authSecret = "dev-secret-change-in-production-32ch";
+// AUTH_SECRET source of truth: env var first (CI), then apps/web/.dev.vars (local dev).
+// Mirrors the resolution used by tests/helpers/auth.ts so the forged HS256 token is
+// signed with the same secret the running server uses to validate verification tokens.
+const authSecret = resolveAuthSecret();
+
+function resolveAuthSecret(): string {
+  if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
+  try {
+    const raw = readFileSync(join(process.cwd(), "apps/web/.dev.vars"), "utf8");
+    const match = raw.match(/^\s*AUTH_SECRET\s*=\s*"?([^"\r\n]+)"?\s*$/m);
+    if (match?.[1]) return match[1];
+  } catch {
+    // fall through
+  }
+  throw new Error("AUTH_SECRET not found: set $AUTH_SECRET or define it in apps/web/.dev.vars");
+}
 
 test.describe("Authentication", () => {
   test("new email users verify through the verification page and get signed in", async ({ page }) => {

@@ -23,10 +23,18 @@ test.describe("Repositories Page", () => {
     await expect(page.getByRole("button", { name: "Remove" })).toBeVisible();
     await expect(page.getByText("1 total")).toBeVisible();
 
-    // 2. Click the 'Remove' button on a repository card
+    // 2. Click the 'Remove' button on the repository card to open the confirmation dialog
     await page.getByRole("button", { name: "Remove" }).click();
 
-    // expect: The repository card disappears from the list immediately
+    // expect: A "Remove Repository" confirmation dialog opens
+    const confirmDialog = page.getByRole("dialog", { name: "Remove Repository" });
+    await expect(confirmDialog).toBeVisible();
+
+    // Confirm the deletion via the dialog's Remove button
+    await confirmDialog.getByRole("button", { name: "Remove" }).click();
+
+    // expect: The repository card disappears from the list once the dialog closes
+    await expect(confirmDialog).not.toBeVisible();
     await expect(page.getByText("remove-me", { exact: true })).not.toBeVisible();
 
     // expect: The total count in the header decrements by 1

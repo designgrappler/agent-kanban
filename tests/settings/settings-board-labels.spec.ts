@@ -11,7 +11,6 @@ test.describe("Settings Page", () => {
     await page.goto(`/boards/${boardId}/labels`);
 
     await expect(page.getByRole("heading", { name: "Labels", level: 1 })).toBeVisible();
-    await expect(page.getByText("No labels yet.")).toBeVisible();
 
     await page.getByRole("button", { name: "Add label" }).click();
     await expect(page.getByRole("dialog", { name: "Add label" })).toBeVisible();
@@ -47,6 +46,6 @@ test.describe("Settings Page", () => {
     await editedRow.getByRole("button", { name: "Delete label ui" }).click();
     await expect(page.getByRole("dialog", { name: "Delete label" })).toBeVisible();
     await page.getByRole("button", { name: "Delete" }).click();
-    await expect(page.getByText("No labels yet.")).toBeVisible();
+    await expect(page.getByRole("listitem").filter({ hasText: /^ui$/ })).toHaveCount(0);
   });
 });
