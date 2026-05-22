@@ -37,11 +37,15 @@ describe("teamMemberRepo", () => {
     expect(peaches!.capabilities!.length).toBeGreaterThan(0);
     expect(peaches!.soul).toBeTruthy();
     expect(peaches!.soul!.length).toBeGreaterThan(0);
+    expect(peaches!.bio).toBeTruthy();
+    expect(peaches!.bio!.length).toBeGreaterThan(0);
 
     const bandit = members.find((m) => m.username === "bandit");
     expect(bandit!.role).toBe("reviewer");
+    expect(bandit!.bio).toBeTruthy();
     const skylar = members.find((m) => m.username === "skylar");
     expect(skylar!.role).toBe("specialist");
+    expect(skylar!.bio).toBeTruthy();
   });
 
   it("seedBuiltinTeamMembers is idempotent (re-running produces same rows)", async () => {
@@ -94,6 +98,18 @@ describe("teamMemberRepo", () => {
     const { createTeamMember, TeamMemberUsernameConflictError } = await import("../apps/web/server/teamMemberRepo");
     await createTeamMember(db, ownerId, { name: "Dup", username: "dup-tm" });
     await expect(createTeamMember(db, ownerId, { name: "Dup 2", username: "dup-tm" })).rejects.toBeInstanceOf(TeamMemberUsernameConflictError);
+  });
+
+  it("createTeamMember persists bio and round-trips it through listTeamMembers", async () => {
+    const ownerId = "tm-bio-owner";
+    await seedUser(db, ownerId, "bio@test.com");
+
+    const { createTeamMember, getTeamMemberByUsername } = await import("../apps/web/server/teamMemberRepo");
+    const customBio = "A short bio for the round-trip test.";
+    await createTeamMember(db, ownerId, { name: "Bio TM", username: "bio-tm", bio: customBio });
+    const fetched = await getTeamMemberByUsername(db, ownerId, "bio-tm");
+    expect(fetched).not.toBeNull();
+    expect(fetched!.bio).toBe(customBio);
   });
 
   it("createBoard wires seedBuiltinTeamMembers into the new-owner bootstrap", async () => {

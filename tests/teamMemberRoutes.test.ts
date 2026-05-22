@@ -68,6 +68,8 @@ describe("GET /api/team-members", () => {
     expect(peaches.builtin).toBe(1);
     expect(Array.isArray(peaches.capabilities)).toBe(true);
     expect(peaches.md_path).toBe(".claude/agents/peaches.md");
+    expect(typeof peaches.bio).toBe("string");
+    expect(peaches.bio.length).toBeGreaterThan(0);
   });
 
   it("authenticates with API key (machine identity)", async () => {

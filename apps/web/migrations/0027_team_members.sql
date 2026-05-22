@@ -5,6 +5,7 @@ CREATE TABLE team_members (
   username     TEXT NOT NULL,
   display_name TEXT,
   description  TEXT,
+  bio          TEXT,
   soul         TEXT,
   role         TEXT,
   capabilities TEXT,

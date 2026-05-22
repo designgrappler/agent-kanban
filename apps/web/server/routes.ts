@@ -1,5 +1,6 @@
 import {
   AGENT_RUNTIMES,
+  type Agent,
   type AgentRuntime,
   type CreateAgentInput,
   type CreateSubagentInput,
@@ -17,6 +18,7 @@ import {
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
+  AgentUsernameConflictError,
   createAgentIdentity,
   deleteAgent,
   getAgent,
@@ -629,10 +631,18 @@ api.post("/api/agents", async (c) => {
   const mailboxToken: string | undefined = undefined;
 
   // Single atomic insert with all fields
-  const agent = await upsertLatestAgent(c.env.DB, prepared, {
-    mailboxToken,
-    gpgSubkeyId: latestIdentity ? undefined : identity.id.toUpperCase(),
-  });
+  let agent: Agent;
+  try {
+    agent = await upsertLatestAgent(c.env.DB, prepared, {
+      mailboxToken,
+      gpgSubkeyId: latestIdentity ? undefined : identity.id.toUpperCase(),
+    });
+  } catch (err) {
+    if (err instanceof AgentUsernameConflictError) {
+      throw new HTTPException(409, { message: `Username "${err.username}" is already taken` });
+    }
+    throw err;
+  }
 
   // GitHub sync — best-effort, skip if not connected
   try {

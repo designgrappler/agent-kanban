@@ -87,6 +87,7 @@ export interface TeamMemberTemplate {
   username: string;
   display_name: string;
   description: string;
+  bio: string;
   soul: string;
   role: string;
   capabilities: string[];
@@ -207,6 +208,7 @@ export const BUILTIN_TEAM_MEMBERS: TeamMemberTemplate[] = [
     display_name: "peaches",
     description:
       "Lead Architect and Context Owner. Use for planning, Red Flag Analysis, implementation plan drafting, and producing Handoff Bridges before any execution work begins. Reads all context files before responding. Never writes source code.",
+    bio: "Architect agent who plans sprints and drafts Handoff Bridges before any specialist executes. Reads all context files before responding and never writes source code.",
     soul: PEACHES_SOUL,
     role: "architect",
     capabilities: ["Read", "Write", "Edit", "Bash"],
@@ -219,6 +221,7 @@ export const BUILTIN_TEAM_MEMBERS: TeamMemberTemplate[] = [
     display_name: "skylar",
     description:
       "Full Stack Specialist. Implements across all layers from a Handoff Bridge — Hono API, React UI, D1 schema, CLI, and Agent OS config. Scope-locked to declared files in the Bridge.",
+    bio: "Full-stack specialist who executes Handoff Bridges across API, UI, schema, and CLI layers. Scope-locked to the files declared in the Bridge.",
     soul: SKYLAR_SOUL,
     role: "specialist",
     capabilities: ["Read", "Write", "Edit", "Bash"],
@@ -231,6 +234,7 @@ export const BUILTIN_TEAM_MEMBERS: TeamMemberTemplate[] = [
     display_name: "bandit",
     description:
       "QA and quality gate. Read-only — runs build checks, audits diffs, and issues a PASS or BLOCKED verdict. No track is complete until Bandit approves.",
+    bio: "Read-only QA gate that audits diffs and issues a PASS or BLOCKED verdict. No track is complete until Bandit approves.",
     soul: BANDIT_SOUL,
     role: "reviewer",
     capabilities: ["Read", "Bash"],

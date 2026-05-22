@@ -299,6 +299,7 @@ export interface TeamMember {
   username: string;
   display_name: string | null;
   description: string | null;
+  bio: string | null;
   soul: string | null;
   role: string | null;
   capabilities: string[] | null;

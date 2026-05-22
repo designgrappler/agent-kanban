@@ -5,7 +5,7 @@ import { type D1, newLongId, parseJsonFields } from "./db";
 const parseTeamMember = <T extends TeamMember>(row: T) => parseJsonFields(row, ["capabilities", "handoff_to", "skills"]);
 
 const TEAM_MEMBER_COLUMNS =
-  "id, owner_id, name, username, display_name, description, soul, role, capabilities, handoff_to, skills, md_path, builtin, version, created_at, updated_at";
+  "id, owner_id, name, username, display_name, description, bio, soul, role, capabilities, handoff_to, skills, md_path, builtin, version, created_at, updated_at";
 
 /**
  * Returns true when (owner_id, username) already exists in either the
@@ -48,6 +48,7 @@ interface CreateTeamMemberInput {
   username: string;
   display_name?: string | null;
   description?: string | null;
+  bio?: string | null;
   soul?: string | null;
   role?: string | null;
   capabilities?: string[] | null;
@@ -80,6 +81,7 @@ export async function createTeamMember(db: D1, ownerId: string, input: CreateTea
     username: input.username,
     display_name: input.display_name ?? null,
     description: input.description ?? null,
+    bio: input.bio ?? null,
     soul: input.soul ?? null,
     role: input.role ?? null,
     capabilities: input.capabilities ?? null,
@@ -94,7 +96,7 @@ export async function createTeamMember(db: D1, ownerId: string, input: CreateTea
   await db
     .prepare(`
       INSERT INTO team_members (${TEAM_MEMBER_COLUMNS})
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     .bind(
       member.id,
@@ -103,6 +105,7 @@ export async function createTeamMember(db: D1, ownerId: string, input: CreateTea
       member.username,
       member.display_name,
       member.description,
+      member.bio,
       member.soul,
       member.role,
       member.capabilities ? JSON.stringify(member.capabilities) : null,
@@ -139,6 +142,7 @@ export async function seedBuiltinTeamMembers(db: D1, ownerId: string): Promise<v
       username: tpl.username,
       display_name: tpl.display_name,
       description: tpl.description,
+      bio: tpl.bio,
       soul: tpl.soul,
       role: tpl.role,
       capabilities: tpl.capabilities,
