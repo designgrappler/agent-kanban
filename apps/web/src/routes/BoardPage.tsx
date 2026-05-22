@@ -11,6 +11,7 @@ import { TaskChatDrawer } from "../components/TaskChatDrawer";
 import { TaskDetail } from "../components/TaskDetail";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
+import { BoardSSEProvider } from "../contexts/BoardSSEContext";
 import { useAgentPresence } from "../hooks/useAgentPresence";
 import { useBoard } from "../hooks/useBoard";
 import { useActiveSprint } from "../hooks/useSprint";
@@ -27,6 +28,16 @@ const TASK_STATUS_LABELS: Record<string, string> = {
 
 export function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
+  // Wrap the page body in BoardSSEProvider so useBoard + useAgentPresence
+  // share a single EventSource per board mount instead of opening one each.
+  return (
+    <BoardSSEProvider boardId={boardId}>
+      <BoardPageContent boardId={boardId} />
+    </BoardSSEProvider>
+  );
+}
+
+function BoardPageContent({ boardId }: { boardId: string | undefined }) {
   const { board, loading, error, refresh } = useBoard(boardId);
   const { data: activeSprint } = useActiveSprint(boardId);
   const avatars = useAgentPresence(boardId);

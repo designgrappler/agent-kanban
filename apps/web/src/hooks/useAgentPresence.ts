@@ -1,8 +1,8 @@
 import type { BoardAction, TaskActionType } from "@agent-kanban/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useBoardSSE } from "../contexts/BoardSSEContext";
 import { clearCardStyles, liftCard, resetCard, slideCard } from "../lib/cardEffects";
-import { useBoardSSE } from "./useBoardSSE";
 
 export type AvatarPhase = "spawning" | "flying" | "absorbing" | "emerging" | "dragging" | "working" | "returning" | "leaving";
 
@@ -163,6 +163,6 @@ export function useAgentPresenceFromEvents(events: BoardAction[], boardId: strin
 }
 
 export function useAgentPresence(boardId: string | undefined) {
-  const { events } = useBoardSSE(boardId);
+  const { events } = useBoardSSE();
   return useAgentPresenceFromEvents(events, boardId);
 }
