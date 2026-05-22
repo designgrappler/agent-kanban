@@ -12,6 +12,7 @@ import { AdminDashboardPage } from "./routes/admin/AdminDashboardPage";
 import { AdminLayout } from "./routes/admin/AdminLayout";
 import { AdminMachinesPage } from "./routes/admin/AdminMachinesPage";
 import { AdminUsersPage } from "./routes/admin/AdminUsersPage";
+import { BacklogPage } from "./routes/BacklogPage";
 import { BoardLabelsPage } from "./routes/BoardLabelsPage";
 import { BoardPage } from "./routes/BoardPage";
 import { BoardRedirect } from "./routes/BoardRedirect";
@@ -98,6 +99,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <BoardLabelsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/boards/:boardId/backlog"
+          element={
+            <ProtectedRoute>
+              <BacklogPage />
             </ProtectedRoute>
           }
         />
