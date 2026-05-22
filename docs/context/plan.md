@@ -2,13 +2,445 @@
 
 ---
 
-## Current Sprint: None — Sprint 9 CLOSED 2026-05-21; Sprint 10 not yet opened
+## Current Sprint: Sprint 11 — Dev-Experience Hardening + Drift Prevention (OPEN 2026-05-21)
+
+### Objective
+
+Harden the local developer experience and prevent silent drift between repo state and runtime state — `ak doctor` for prerequisite verification, auto-applied D1 migrations, a pre-push Playwright gate on `main` paired with a strict `/close-sprint` skill, and a fully-green daemon smoke twice in a row — while laying paper-only design groundwork for kanban-level non-cryptographic team agents (in-board Peaches/Skylar/Bandit) so the next sprint can implement on a settled spec.
+
+### Tracks
+
+| Track  | Goal                                                                                              | Type        | Status      |
+|--------|---------------------------------------------------------------------------------------------------|-------------|-------------|
+| S11-T1 | `ak doctor` CLI command verifying gpg, D1 migration state, `.dev.vars` presence, worktree symlinks | Code        | Bridge issued — foundation, lands first |
+| S11-T2 | D1 migration auto-apply via `predev` hook + `postinstall` + `scripts/daemon-smoke-test.sh` preflight | Code      | Bridge issued — parallel after T1 contract |
+| S11-T3 | Pre-push Playwright gate (lefthook, `main` only) + `/close-sprint` skill (Playwright + fully clean tree) | Code + skill | Bridge issued — parallel with T2 |
+| S11-T4 | T22 daemon E2E smoke twice-green; harden 3 documented script bugs (`set -u` cleanup, opaque `json_query`, undocumented `<runtime>` arg) | Code  | Bridge issued — sequential after T1 merges |
+| S11-T5 | Design spec ONLY for kanban-level non-cryptographic team agents (Peaches/Skylar/Bandit as in-board team members). No code. | Design | Bridge issued — parallel; zero merge requirement |
+
+### Dependency Order
+
+```
+S11-T1 (ak doctor)  ──┬── merges first ──> S11-T4 (smoke twice-green; calls ak doctor in preflight)
+                      │
+S11-T2 (db:migrate) ──┤── parallel after T1 contract is visible (script needs ak doctor name only)
+                      │
+S11-T3 (gate+skill) ──┤── parallel with T2; independent of T1
+                      │
+S11-T5 (design doc) ──┴── fully parallel; zero merge requirement (slip ≠ block)
+```
+
+S11-T1 must merge to `main` first so S11-T4's smoke script can call `ak doctor` as a precondition. S11-T2 and S11-T3 do not depend on T1's implementation, only on the agreed CLI surface. S11-T5 is design-only and never blocks sprint close.
+
+### Circuit-Breaker Risk
+
+**5-track sprint sits at the upper edge of our stability rule.** Mitigation: **S11-T5 is design-only with zero merge requirement.** If T5 slips, it does NOT block sprint close — it carries forward to Sprint 12 as-is. The hard sprint-close gate is T1 + T2 + T3 + T4 merged green; T5 ships when ready and is reviewed by Tim, not Bandit. Any track triggering 3 consecutive same-root-cause failures stops immediately and routes to Peaches for Red Flag Analysis.
+
+### Definition of Done (Sprint 11)
+
+- [ ] **S11-T1 (`ak doctor`):**
+  - [ ] New `packages/cli/src/commands/doctor.ts` registered in `packages/cli/src/index.ts` via a `registerDoctorCommand` export, mirroring the existing command registration pattern.
+  - [ ] Four checks implemented, each emitting OK / WARN / FAIL with a one-line remediation hint:
+    - `gpg` installed and a usable signing key present
+    - Local D1 migration state matches committed migrations (compare files in `apps/web/migrations/` vs the `d1_migrations` table in `.wrangler/state/v3/d1/...`)
+    - `apps/web/.dev.vars` exists (or is a healthy symlink, e.g. inside a worktree)
+    - Worktree symlinks healthy (when invoked from inside `.worktrees/*`)
+  - [ ] Command exits 0 if all checks OK or WARN; exits non-zero on any FAIL.
+  - [ ] **No remediation logic** — verification only.
+  - [ ] Vitest unit tests for each check's pass/fail branches.
+  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` exits zero.
+  - [ ] `bash scripts/install-cli.sh` then `ak doctor` exits 0 on a healthy laptop; intentionally break each check (rename `.dev.vars`, etc.) to confirm each FAIL surfaces.
+  - [ ] Bandit PASS.
+- [ ] **S11-T2 (db:migrate auto-apply):**
+  - [ ] `predev` script in `apps/web/package.json` invokes `pnpm db:migrate` (idempotent — no-op if applied).
+  - [ ] `postinstall` invocation added if it does not measurably slow CI (decision documented in commit message).
+  - [ ] `scripts/daemon-smoke-test.sh` runs `pnpm --filter @agent-kanban/web db:migrate` (or equivalent) as preflight.
+  - [ ] Manual fallback `pnpm --filter @agent-kanban/web db:migrate` continues to work and is documented in README.md / CONTRIBUTING.md.
+  - [ ] **Idempotency proof:** `pnpm predev` run twice in a row — second invocation completes <100ms with no D1 writes.
+  - [ ] No DB credentials surface in any new script.
+  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` exits zero.
+  - [ ] Bandit PASS.
+- [ ] **S11-T3 (pre-push Playwright gate + `/close-sprint` skill):**
+  - [ ] Root-level `pnpm test:e2e:gate` script runs `npx playwright test`.
+  - [ ] **Lefthook** `pre-push` job (extending the existing `lefthook.yml`) gated on `refs/heads/main` runs `pnpm test:e2e:gate`. Worktree-branch pushes are unaffected.
+  - [ ] `.claude/skills/close-sprint/` skill (project-level, matching the precedent set by `.claude/skills/clean-context/` and `.claude/skills/remind/`) requires:
+    - Playwright suite green
+    - `git status --porcelain` empty (zero unstaged AND zero untracked)
+    - tracks.md sprint-status flip happens only when both pass
+  - [ ] Verification: `git push origin main` blocks on simulated test failure; `git push origin track/<anything>` does not block; `/close-sprint` refuses on a dirty tree (LOCAL_NOTES.md or experimental files present).
+  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` exits zero.
+  - [ ] Bandit PASS.
+- [ ] **S11-T4 (daemon smoke twice-green):**
+  - [ ] `scripts/daemon-smoke-test.sh` fixes three documented bugs:
+    1. `set -u` cleanup — variable-unset traps no longer trigger spurious errors during teardown
+    2. Opaque `json_query` errors — error messages now include response body context
+    3. `<runtime>` argument — made optional with a default OR documented in `usage()` output
+  - [ ] Smoke script invokes `ak doctor` as a preflight (depends on S11-T1).
+  - [ ] **Twice-green proof:** `bash scripts/daemon-smoke-test.sh` exits 0 on two consecutive runs from clean local state.
+  - [ ] Bandit PASS on the script diff.
+- [ ] **S11-T5 (design spec for kanban team agents):**
+  - [ ] Design document under `docs/design/team-agents.md` covering:
+    - (a) data model — new `team_members` table OR reuse `agents` with a `kind` discriminator (recommendation + rationale)
+    - (b) UI surface — single Agents tab showing both crypto agents and team members OR a separate "Team" tab
+    - (c) auth — team members aren't agents; own identity, inherit from `user`, or sit outside auth entirely
+    - (d) lifecycle — team members are persistent (no daemon-spawn presence model); how do presence/status work
+    - (e) migration path — current text-based role costumes (`.claude/agents/*.md`) → in-board team members
+    - (f) explicit non-goals (cryptographic identity, daemon process spawn for team members)
+  - [ ] Design doc reviewed by Tim. **No Bandit review required — no code, migrations, or tests changed.**
+  - [ ] Sentinel: `git diff --stat` shows only `docs/design/team-agents.md`.
+- [ ] All four code tracks (T1–T4) merged to `main` via PR. T5 ships when ready; it does not block sprint close.
+
+---
+
+## Sprint 11 Bridges
+
+### HANDOFF BRIDGE — S11-T1
+**Topic:** `ak doctor` — new CLI command verifying gpg, D1 migration state, `.dev.vars`, worktree symlinks
+**Track:** S11-T1
+**Specialist:** Skylar
+**Static DNA Check:** Aligned with AGENTIC.md — new CLI subcommand under `packages/cli/src/commands/`. No schema, no auth, no source under `apps/web/`. Follows the existing `registerXCommand` registration pattern (see `packages/cli/src/commands/sprint.ts`, `start.ts`). No new identity types. Verification-only — no remediation logic.
+**Dynamic DNA State:**
+- **Product Context:** Tim's workstation has hit several silent prerequisite gaps (missing `gpg`, drifted local D1, missing/broken `.dev.vars` symlinks in worktrees). `ak doctor` surfaces all of them in one command with OK/WARN/FAIL + a one-line hint per check, so the next agent or the human can act before the daemon, smoke script, or local stack falls over.
+- **Current Plan:** Sprint 11 → S11-T1 in this file.
+- **Execution Files:**
+  - `packages/cli/src/commands/doctor.ts` — NEW. `registerDoctorCommand(program)` exporting `ak doctor`. Implements four checks (gpg, D1 migrations, `.dev.vars`, worktree symlinks). Each check returns `{ status: 'ok' | 'warn' | 'fail', message: string, hint?: string }`. Exit code 0 unless any FAIL.
+  - `packages/cli/src/index.ts` — register the new command alongside `registerSprintCommand`, `registerStartCommand`, etc.
+  - `tests/cli-doctor.test.ts` — NEW. Vitest unit tests covering each check's OK and FAIL branches via stub fs/exec.
+- **Migration Safety:** N/A — no schema change. New CLI command is reversible (delete file + unregister).
+- **Security Review:** N/A — read-only verification command. Does not write secrets, does not transmit anything off-box.
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s11-t1-ak-doctor track/s11-t1-ak-doctor`
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — all green.
+2. `bash scripts/install-cli.sh` then `ak doctor` — exits 0 on a healthy laptop.
+3. **Each FAIL surfaces:**
+   - `mv apps/web/.dev.vars apps/web/.dev.vars.bak && ak doctor` → FAIL on `.dev.vars` check; restore.
+   - Temporarily uninstall gpg from PATH (`PATH=/usr/bin ak doctor` or similar) → FAIL on gpg check.
+   - Add a fake unapplied migration file under `apps/web/migrations/` → FAIL on D1 migration check; remove.
+   - From inside a worktree with a broken `node_modules` symlink → FAIL on worktree check.
+4. Bandit QA — confirm verification-only scope (no remediation/auto-fix logic), no auth surface, no DB writes.
+
+**Next Step:** Skylar — read `packages/cli/src/commands/sprint.ts` and `packages/cli/src/index.ts` first to lock the registration pattern. Read `apps/web/migrations/` and inspect `.wrangler/state/v3/d1/` to understand how to compare committed migrations to the `d1_migrations` table. Implement the four checks behind a clean `Check` interface, register the command, write unit tests, run the verification checklist (FAIL surfacing is mandatory — not optional). Invoke Bandit. Merge first; T4 depends on this landing.
+
+---
+
+### HANDOFF BRIDGE — S11-T2
+**Topic:** D1 migration auto-apply — `predev` hook + `postinstall` + smoke-script preflight (idempotent)
+**Track:** S11-T2
+**Specialist:** Skylar
+**Static DNA Check:** Aligned — package.json scripts + a smoke-script preflight line. No schema migration itself; this track wires the existing `db:migrate` command into auto-trigger points. No auth, no source code under `apps/web/src/` or `apps/web/server/`. Reversible.
+**Dynamic DNA State:**
+- **Product Context:** Local D1 drifts from committed migrations because Wrangler does not auto-apply on `pnpm dev` startup. S10-T1 hit this drift; S10-T2 close-out documented `pnpm --filter @agent-kanban/web db:migrate` as the manual fallback. Goal: make the manual step automatic at three trigger points (predev, postinstall, smoke preflight) without breaking the documented manual path.
+- **Current Plan:** Sprint 11 → S11-T2 in this file.
+- **Execution Files:**
+  - `apps/web/package.json` — add `predev` script that runs `pnpm db:migrate`. Add `postinstall` (only if it does not measurably slow CI — measure and document).
+  - `scripts/daemon-smoke-test.sh` — add a preflight line that runs the migration command before the smoke body. Coordinate with S11-T4 to avoid merge conflicts (T4 owns the smoke script).
+  - `README.md` and/or `CONTRIBUTING.md` — confirm the manual fallback `pnpm --filter @agent-kanban/web db:migrate` is still documented (already at README.md:227 and CONTRIBUTING.md:10,46 per tracks.md note — verify still present).
+- **Migration Safety:** Reversible — package.json edits and one shell preflight line. The migrations themselves are unchanged. **Idempotency is the safety property:** `db:migrate` must complete <100ms with no DB writes when already applied. Verify by running predev twice in a row and inspecting `.wrangler/state` mtimes.
+- **Security Review:** No DB credentials surface in any new script. The migration command reads from the local D1 file via Wrangler — no secrets in scripts, env vars, or logs.
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s11-t2-migrate-auto-apply track/s11-t2-migrate-auto-apply`
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — all green.
+2. **Idempotency:** `pnpm --filter @agent-kanban/web predev` twice in a row; second invocation <100ms, no D1 file mtime change.
+3. **postinstall measurement:** time `pnpm install --frozen-lockfile` with and without postinstall hook; document delta in commit message; only keep the hook if delta is <2s.
+4. **Smoke preflight:** `bash scripts/daemon-smoke-test.sh` — confirm the migration line runs and is idempotent on the second invocation.
+5. **Manual fallback intact:** confirm README.md and CONTRIBUTING.md still document the manual `pnpm --filter @agent-kanban/web db:migrate` path.
+6. Bandit QA — confirm no DB credentials in new scripts.
+
+**Next Step:** Skylar — coordinate with S11-T4 on the smoke script edit window (T4 also touches that file). Make the package.json + smoke edits, prove idempotency twice, measure postinstall cost. Invoke Bandit.
+
+---
+
+### HANDOFF BRIDGE — S11-T3
+**Topic:** Pre-push Playwright gate (lefthook, `main` only) + `/close-sprint` skill
+**Track:** S11-T3
+**Specialist:** Skylar
+**Static DNA Check:** Aligned — extends the existing `lefthook.yml` (lefthook is the installed hook framework; husky is NOT installed — confirmed via `package.json` devDependencies). New project-level skill under `.claude/skills/close-sprint/` follows the precedent set by `.claude/skills/clean-context/` and `.claude/skills/remind/`. No schema, no auth, no source code under `apps/web/`.
+**Dynamic DNA State:**
+- **Product Context:** Two drift-prevention surfaces. (1) The Playwright suite went broken-by-default for 17 days in Sprint 9–10 because nothing blocked a push to `main` from landing while E2E was red. A pre-push gate scoped to `main` solves this without slowing day-to-day worktree pushes. (2) `/close-sprint` currently has no enforced gate — sprints have closed with LOCAL_NOTES.md and experimental files lying around. The skill must refuse to flip sprint status unless Playwright is green AND `git status --porcelain` is fully empty.
+- **Current Plan:** Sprint 11 → S11-T3 in this file.
+- **Execution Files:**
+  - `package.json` (root) — add `test:e2e:gate` script that runs `npx playwright test`.
+  - `lefthook.yml` — add a `pre-push` block with a job conditional on `refs/heads/main` (use lefthook's `run` with a guard like `if [ "$1" = "refs/heads/main" ]; then pnpm test:e2e:gate; fi`, or lefthook's native ref-filter syntax — check lefthook 2.x docs). Worktree-branch pushes must remain unaffected.
+  - `.claude/skills/close-sprint/SKILL.md` — NEW. Skill body that: (a) runs the Playwright suite, (b) runs `git status --porcelain` and refuses if any output, (c) only on both green flips the sprint status in `docs/context/tracks.md` and updates `docs/context/plan.md`. Strictest gate per locked decision: zero unstaged AND zero untracked.
+  - `.claude/skills/close-sprint/` directory structure should match `.claude/skills/clean-context/` (read that one first to confirm shape).
+- **Migration Safety:** Reversible — config + skill files only. No schema impact. Hook can be removed cleanly.
+- **Security Review:** N/A — no auth surface, no secrets. Note that the gate runs Playwright locally on push; tests use existing Miniflare D1, no production secrets touched.
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s11-t3-e2e-gate-close-sprint track/s11-t3-e2e-gate-close-sprint`
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — all green.
+2. **Gate fires on main:** stash a small E2E-breaking change, attempt `git push origin main` from a clean checkout — push blocked with the failing test as evidence.
+3. **Gate skips on worktree branches:** same broken state, `git push origin track/s11-t3-e2e-gate-close-sprint` — push proceeds (worktree branches are not gated).
+4. **`/close-sprint` refuses dirty tree:** with `LOCAL_NOTES.md` present (untracked), invoke `/close-sprint` — refuses with explicit "untracked files present" message.
+5. **`/close-sprint` refuses unstaged:** with a modified tracked file, invoke — refuses.
+6. **`/close-sprint` proceeds clean:** clean tree + green Playwright → flips Sprint 11 to closed in tracks.md (test in a scratch branch; do NOT close Sprint 11 for real during verification).
+7. Bandit QA — confirm scope: lefthook + skill only, no production code touched.
+
+**Next Step:** Skylar — read `lefthook.yml` and `.claude/skills/clean-context/` first to lock the patterns. Add the script + hook + skill. Run the four-way verification matrix (gate fires/skips × close-sprint refuses/proceeds). Invoke Bandit.
+
+---
+
+### HANDOFF BRIDGE — S11-T4
+**Topic:** Daemon E2E smoke — twice-green idempotency proof + 3 documented script bugs
+**Track:** S11-T4
+**Specialist:** Skylar
+**Depends on:** S11-T1 merged to main (so `ak doctor` is callable as smoke preflight).
+**Static DNA Check:** Aligned — operational + script-hardening track. Edits `scripts/daemon-smoke-test.sh` only. No source under `apps/web/` or `packages/`. No schema, no auth.
+**Dynamic DNA State:**
+- **Product Context:** T22 has been deferred since Sprint 7 because of three documented script bugs and a missing `gpg` prerequisite. With S11-T1 (`ak doctor`) and S11-T2 (auto-migrate) landed, the smoke script can call `ak doctor` as preflight, which surfaces the prerequisite issues cleanly. This track fixes the three script bugs and proves twice-green idempotency.
+- **Current Plan:** Sprint 11 → S11-T4 in this file.
+- **Execution Files:**
+  - `scripts/daemon-smoke-test.sh` — three bug fixes plus a preflight `ak doctor` invocation:
+    1. `set -u` cleanup: every variable referenced in the trap/cleanup path is initialized before the trap is registered (`: "${VAR:=}"` guards or explicit `VAR=""` defaults).
+    2. `json_query` opaque errors: wrap the helper so on parse failure it prints the response body (truncated to ~500 chars) and the failing query, before exiting non-zero.
+    3. `<runtime>` argument: either default to `claude` (or whatever the documented expected runtime is — check existing daemon code) when omitted, OR add a `usage()` block that documents it as required and triggers on missing-arg. Pick the cleaner option after reading the script.
+  - Coordinate with S11-T2 — both tracks edit this file. T2's edit is a single preflight line; T4 should rebase onto T2 if T2 lands first, or T2 rebases onto T4. Either order works; whoever lands second resolves the small overlap.
+- **Migration Safety:** Reversible — script edits only.
+- **Security Review:** Confirm no secrets logged in new error messages. The `json_query` improvement prints response bodies — ensure auth tokens and API keys are scrubbed if they appear (review the helper before adding the body-print).
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s11-t4-daemon-smoke track/s11-t4-daemon-smoke`
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — all green.
+2. **`ak doctor` preflight passes** before smoke body runs (depends on S11-T1 landed).
+3. **Twice-green:** `bash scripts/daemon-smoke-test.sh` exits 0; immediately re-run `bash scripts/daemon-smoke-test.sh` from the same state — exits 0 again.
+4. **Bug-fix evidence:**
+   - `set -u`: trigger a teardown path (Ctrl-C mid-run) — no `unbound variable` error.
+   - `json_query`: induce a parse failure by stubbing a malformed response — error includes response body excerpt.
+   - `<runtime>`: invoke with no runtime arg — either succeeds with default OR errors with usage block.
+5. Bandit QA — confirm script-only scope, no source files touched, no secrets in new error output.
+
+**Next Step:** Skylar — wait for S11-T1 to merge to main. Read `scripts/daemon-smoke-test.sh` end-to-end first. Fix the three bugs, add `ak doctor` preflight, prove twice-green from clean state. Coordinate with T2 owner on smoke-script overlap. Invoke Bandit.
+
+---
+
+### HANDOFF BRIDGE — S11-T5
+**Topic:** Design spec ONLY — kanban-level non-cryptographic team agents (Peaches/Skylar/Bandit as in-board team members)
+**Track:** S11-T5
+**Specialist:** Peaches (self-dispatch — no Skylar handoff)
+**Static DNA Check:** Aligned — design-only track. Zero source code, zero migrations, zero tests touched. Output is a single markdown file under `docs/design/`. No Bandit review required (no code surface).
+**Dynamic DNA State:**
+- **Product Context:** Tim's longer-term direction (per memory `project_agent_os_role_drift.md`) is for the team — Peaches, Skylar, Bandit — to appear in the Agents UI of the kanban board itself as non-cryptographic project-team members, not as Claude Code subagents. Before any code is written, we need a settled spec covering data model, UI surface, auth, lifecycle, migration path, and explicit non-goals. Sprint 12 will implement on top of this spec.
+- **Current Plan:** Sprint 11 → S11-T5 in this file. Absorbs the [P1] item from tracks.md "Sprint 11 Candidates".
+- **Execution Files:**
+  - `docs/design/team-agents.md` — NEW. The only file modified in this track.
+- **Migration Safety:** N/A — paper only.
+- **Security Review:** N/A — paper only. Spec must explicitly call out non-goals (no cryptographic identity, no daemon-spawned process for team members) so Sprint 12 implementation can't accidentally couple them to the existing Ed25519 agent path.
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s11-t5-team-agents-design track/s11-t5-team-agents-design`
+
+**Required spec sections (in order):**
+1. **Context & Problem** — why team-as-in-board-agents; relationship to existing crypto agents and to the local `.claude/agents/*.md` role costumes.
+2. **Data Model** — option A: new `team_members` table; option B: reuse `agents` table with a `kind: 'crypto' | 'team'` discriminator. Recommend one with rationale; lock the schema sketch.
+3. **UI Surface** — option A: existing Agents tab shows both kinds with a filter/badge; option B: separate "Team" tab. Recommend one with rationale; reference current `apps/web/src/routes/AgentsPage.tsx` (or equivalent) for the integration point.
+4. **Auth** — team members aren't agents (no Ed25519 keypair); options: (a) own identity type, (b) inherit from `user`, (c) sit outside auth entirely as display-only entities. Recommend one.
+5. **Lifecycle & Presence** — team members are persistent; Peaches doesn't go offline like a daemon-spawned agent. How does presence/status work? Recommend a model (always-on, manual toggle, or external presence signal).
+6. **Migration Path** — current text-based role costumes (`.claude/agents/peaches.md|skylar.md|bandit.md`) → in-board team members. One-time seed migration? Manual creation by Tim? Document the cut-over.
+7. **Explicit Non-Goals** — no cryptographic identity for team members, no daemon process spawn, no task-claim lifecycle, no `agent_logs` write surface.
+8. **Open Questions** — any decisions punted to Sprint 12 implementation.
+
+**Verification:**
+1. `git diff --stat` — shows ONLY `docs/design/team-agents.md` (Sentinel: any other file modified is a scope violation).
+2. Tim reviews the spec and signs off (or returns with revisions).
+3. **No Bandit review** — design-only, no code surface.
+4. **Slip is acceptable:** if T5 doesn't land before T1–T4 close, the sprint still closes; T5 carries forward to Sprint 12 unchanged.
+
+**Next Step:** Peaches — create the worktree, draft `docs/design/team-agents.md` with the eight sections above. Recommend a path for each option-pair (data model, UI surface, auth) with explicit rationale. Run the Sentinel diff check. Hand to Tim for review. No Bandit invocation.
+
+---
+
+## Archive: Sprint 10 — E2E Baseline Restoration + Frontend Hardening (CLOSED 2026-05-21)
+
+### Objective
+
+Restore a clean Playwright E2E baseline and lift two pre-identified frontend risks while the test infrastructure is in flight. Sprint 9 closed with the Playwright suite broken since `a4f8f76 feat(auth): require email verification` (2026-05-04) — every spec calling `signUpAndGetBoard` fails with `EMAIL_NOT_VERIFIED` 403 because the helper at `tests/helpers/auth.ts:120-122` writes `emailVerified=1` via the external `sqlite3` CLI, which Miniflare's open D1 handle does not see. S10-T1 fixes that helper through Better Auth's own surface (no production auth gating). S10-T2 then re-runs the entire Playwright suite and sweeps every surfaced test-code failure into a single clean baseline (Tim accepted higher scope risk in exchange for one decisive pass; circuit breaker at >5 distinct source bugs). S10-T3 clears the two cosmetic Biome warnings carried from S9-T3. S10-T4 lifts the per-mount EventSource duplication in `useBoard` and `useAgentPresence` into a shared `BoardSSEContext` provider before the ~6-per-origin Chrome cap bites in production.
+
+### Tracks
+
+| Track  | Goal                                                                                              | Status      |
+|--------|---------------------------------------------------------------------------------------------------|-------------|
+| S10-T1 | Playwright auth helper repair — fix `tests/helpers/auth.ts:120-122` via Better Auth admin API or test-mailer token harvest; do NOT gate `requireEmailVerification` on env | DONE — Bandit PASS, merged to main 2026-05-21 (push deferred, batched with T2) |
+| S10-T2 | Full E2E baseline restoration — re-run entire Playwright suite, fix every surfaced test-code failure as one sweep; circuit breaker at >5 distinct source bugs | DONE — Bandit PASS (independent), merged + pushed 2026-05-21. 0 source bugs found across 17 surfaced failures; 16 test files +81/-51; circuit breaker not tripped. |
+| S10-T3 | Biome warning cleanup — `biome.json` `$schema` → 2.4.10; drop `/**` suffix on `!.worktrees` and `!.claude` per `useBiomeIgnoreFolder` | DONE — Bandit PASS, merged to main 2026-05-21 (push deferred, batched with T2) |
+| S10-T4 | `useBoardSSE` shared provider lift — single `EventSource` per board mount via `BoardSSEContext` | DONE — Bandit PASS, merged to main 2026-05-21 (push deferred, batched with T2) |
+
+### Dependency Order
+
+```
+S10-T1 (helper repair) → S10-T2 (full sweep — needs unblocked helper)
+S10-T3 ∥ S10-T4 ∥ S10-T1 (parallel-safe; T3 and T4 do not depend on T1 or each other)
+```
+
+S10-T1 must merge to `main` first so S10-T2 starts from a green helper. S10-T3 and S10-T4 are parallel-safe with each other and with the T1→T2 lane.
+
+### Definition of Done (Sprint 10)
+
+- [ ] **S10-T1:**
+  - [ ] `tests/helpers/auth.ts:120-122` no longer relies on the external `sqlite3` CLI to write `emailVerified=1` against a Miniflare D1 file.
+  - [ ] Replacement path is one of: (a) Better Auth admin API call from inside the test process so Miniflare's open D1 handle sees the write, or (b) test-mailer token harvest that drives the real verification endpoint. **Do NOT gate `requireEmailVerification` on env** — `apps/web/server/betterAuth.ts:25` stays `true` in all environments.
+  - [ ] At least two previously-failing specs (`tests/e2e/backlog.spec.ts` and `tests/header/header-elements.spec.ts`) pass against the repaired helper as smoke evidence; full-suite sweep is S10-T2's job.
+  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` exits zero.
+  - [ ] Bandit PASS (security review notes the test-infra-only scope; no production auth surface touched).
+- [ ] **S10-T2:**
+  - [ ] Full Playwright suite executed against `main` rebased onto S10-T1.
+  - [ ] Every test-code failure surfaced by the sweep is fixed in this track.
+  - [ ] **Circuit breaker:** if more than 5 distinct source-code bugs (root-caused to `apps/web/` or `packages/`, not test code) surface during the sweep, STOP, hand surface bugs back to Peaches/Skylar, and re-plan. Source bugs found below the threshold are listed in the close-out note and routed back to source-owning tracks.
+  - [ ] Final Playwright run reports zero failures (skips and `test.fixme` allowed only with explicit reason in the spec).
+  - [ ] Bandit PASS.
+- [ ] **S10-T3:**
+  - [ ] `biome.json` `$schema` value bumped to match installed CLI 2.4.10.
+  - [ ] `!.worktrees/**` → `!.worktrees` and `!.claude/**` → `!.claude` per Biome's `useBiomeIgnoreFolder` rule.
+  - [ ] `pnpm check` exits zero with no warnings on those two rules.
+  - [ ] Bandit PASS.
+- [ ] **S10-T4:**
+  - [ ] New `apps/web/src/contexts/BoardSSEContext.tsx` (or equivalent location) exposing a provider plus a `useBoardSSE()` hook that yields a single shared `EventSource` keyed by `boardId`.
+  - [ ] `apps/web/src/hooks/useBoard.ts` and `apps/web/src/hooks/useAgentPresence.ts` no longer call `new EventSource(...)` directly — both consume the context.
+  - [ ] Provider mounted in `apps/web/src/routes/BoardPage.tsx` so both hooks resolve to the same connection per mount.
+  - [ ] Manual verification: open `BoardPage` in Chrome dev-tools Network panel filtered to `eventsource`; confirm exactly one open EventSource per board mount (was two).
+  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` exits zero.
+  - [ ] Bandit PASS.
+- [ ] All four tracks merged to `main` via PR.
+
+---
+
+## Sprint 10 Bridges
+
+### HANDOFF BRIDGE — S10-T1
+**Topic:** Playwright auth helper repair — make `signUpAndGetBoard` (and `signUpVerified`) work against Miniflare's open D1 handle without gating `requireEmailVerification` on env
+**Track:** S10-T1
+**Specialist:** Skylar
+**Static DNA Check:** Aligned with AGENTIC.md — test infrastructure change scoped to `tests/helpers/`. No production auth surface modified. Better Auth integration follows the existing `@better-auth/api-key` and `@better-auth/agent-auth` patterns already in use. No schema migration. Owner-scoping unchanged.
+**Dynamic DNA State:**
+- **Product Context:** Every Playwright spec since 2026-05-04 calling `signUpAndGetBoard` fails with `EMAIL_NOT_VERIFIED` 403 because the test helper writes `emailVerified=1` via the external `sqlite3` CLI against the Miniflare D1 file, which the running test process's open D1 handle does not observe. Fix: use a path that goes through the same handle the request goes through.
+- **Current Plan:** Sprint 10 → S10-T1 in this file.
+- **Execution Files:**
+  - `tests/helpers/auth.ts` — primary edit; replace lines 120-122 (the external `sqlite3` write) with a Better Auth admin-API call OR a test-mailer token harvest. Pick whichever lands cleanly first; both approaches are acceptable.
+  - `tests/helpers/` — may add a small adjacent helper (e.g. `tests/helpers/mailer.ts` or `tests/helpers/adminAuth.ts`) if the chosen path needs it. Test infrastructure only.
+  - `apps/web/server/betterAuth.ts` — DO NOT MODIFY. `requireEmailVerification: true` at line 25 stays as-is. Production auth behavior is not in scope for this track.
+- **Migration Safety:** N/A — no schema change. Reversible (test helper edit only).
+- **Security Review:** **AUTH-adjacent** — touches a test helper that creates verified user accounts in test environments. Not production auth surface. Tim's documented risk acceptance per peaches.md hard constraints applies: this is test infra, not prod auth. **Tim acceptance: YES (2026-05-21)** — accepted as test-helper-only scope; `apps/web/server/betterAuth.ts:25` stays untouched.
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s10-t1-auth-helper track/s10-t1-playwright-auth-helper`
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — all green.
+2. `npx playwright test tests/e2e/backlog.spec.ts` — passes (was failing with `EMAIL_NOT_VERIFIED` 403).
+3. `npx playwright test tests/header/header-elements.spec.ts` — passes (sibling spec confirmed failing identically pre-fix).
+4. `git diff apps/web/server/betterAuth.ts` — empty (no production auth file touched).
+5. Bandit QA — confirm AUTH-adjacent test infra scope; flag if any production code outside `tests/` was modified.
+
+**Next Step:** Skylar — read `tests/helpers/auth.ts` in full, then `apps/web/server/betterAuth.ts:25` to confirm the production setting is `requireEmailVerification: true` and inspect the Better Auth options object for whether an admin API or token-harvest hook is exposed. Pick the cleaner of the two paths and implement it. Run the verification checklist. Invoke Bandit.
+
+---
+
+### HANDOFF BRIDGE — S10-T2
+**Topic:** Full Playwright E2E baseline restoration — sweep every surfaced test-code failure (and count source bugs toward the >5 circuit breaker)
+**Track:** S10-T2
+**Specialist:** Skylar
+**Status:** DONE — Bandit PASS (independent verification), merged + pushed to origin/main 2026-05-21. 0 source bugs found across 17 surfaced failures; 16 test files +81/-51; circuit breaker not tripped.
+**Tim acceptance:** YES (2026-05-21) — full sweep, fix all surfaced test-code failures inline; source bugs count toward the >5 distinct circuit breaker. No deferral of test-code fixes to follow-up tracks.
+**Static DNA Check:** Aligned with AGENTIC.md — primary scope is test-code (the entire surface IS test code; Skylar may modify test files directly here per Post-Write Workflow ownership-rule exception when scope is test-code itself). Playwright is the canonical E2E surface; vitest unit/integration suite is unaffected. No schema or auth changes. Source-code edits are scope creep — if a real source bug is the only fix, that bug counts toward the >5 distinct circuit breaker.
+**Dynamic DNA State:**
+- **Product Context:** S10-T1 swapped the auth helper from sqlite3 child_process to an HS256 token forge against the real `/api/auth/verify-email` endpoint, which goes through the same D1 handle the server uses. With the helper unblocked, a wave of latent failures across the Playwright suite is likely to surface (specs red since 2026-05-04 plus anything newly broken). Tim's directive: sweep them all in one decisive pass.
+- **Current Plan:** Sprint 10 → S10-T2 in this file.
+- **Execution Files:**
+  - `tests/**/*.spec.ts` — all Playwright specs in scope for fixes (current layout: `tests/auth/`, `tests/board/`, `tests/backlog/`, `tests/agents/`, `tests/settings/`, `tests/seed.spec.ts`, etc.).
+  - `tests/helpers/**` — helper edits permitted if a shared helper bug is the root cause. The new `tests/helpers/auth.ts` (HS256 forge) is the live surface Skylar is working against — read it first.
+  - **Out of scope (counts toward circuit breaker if encountered):** any file under `apps/web/src/`, `apps/web/server/`, `apps/web/worker/`, `packages/cli/`, `packages/shared/`. Source bugs are tallied, not silently fixed.
+
+**Migration Safety:** N/A for test-code edits. **Local D1 drift fallback:** if pre-test setup fails because the local D1 is out of sync with committed migrations (known [P2] gap parked in tracks.md — Wrangler doesn't auto-apply migrations on dev startup), run `pnpm --filter @agent-kanban/web db:migrate` ONCE and continue. Do not try to solve the auto-apply gap inline. Document in the close-out note if used.
+
+**Security Review:** Test infra only. **Hard rules:** (a) tests must not write secrets to fixtures or commit any `.dev.vars` symlink (the local symlink Skylar created in the T1 worktree is local-only and must not be committed); (b) `apps/web/.dev.vars` stays in `.gitignore`; (c) `AUTH_SECRET` is read from env or local `.dev.vars` only — never hardcoded in test code.
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s10-t2-e2e-baseline track/s10-t2-e2e-baseline` — MANDATORY use of the script (raw `git worktree add` breaks pnpm hoisted node_modules; symlinks the script creates are required).
+
+**Circuit Breaker (HARD):**
+- During the sweep, if more than **5 distinct source-code bugs** are root-caused to `apps/web/` or `packages/`, **STOP**.
+- For each surfaced source bug record: failing spec name, file:line where the bug lives, error trace excerpt, and a one-line root-cause hypothesis with repro.
+- Hand the structured stop-report back to Peaches for re-planning. Do NOT continue patching test code on top of broken source.
+- Source bugs **at or below the threshold** are still surfaced (one-liners in the close-out note) and routed back to source-owning tracks; the test-code sweep continues.
+- Any destructive or irreversible failure (e.g. data loss, broken main) → immediate STOP regardless of count.
+
+**Verification:**
+1. **Full E2E suite:** `npx playwright test` (run from repo root — `playwright.config.ts` lives there; no `test:e2e` package script exists by design). Zero failures. Skips and `test.fixme` allowed only with an in-spec comment justifying the skip.
+2. **Regression check:** `pnpm build && pnpm tsc --noEmit && npx vitest run` — all green.
+3. **Stop-report (only if circuit breaker trips):** structured list of >5 distinct source bugs with file:line + error trace + one-line root cause + repro for each. No partial test-code work merged.
+4. **Close-out note (on green):** enumerate (a) test-code fixes applied, file by file; (b) any source bugs surfaced and where routed; (c) whether `db:migrate` was needed.
+5. **Bandit QA:** confirm scope discipline (test-code primary; source edits, if any, counted toward circuit breaker); confirm no `.dev.vars` or secrets committed; confirm worktree script was used.
+
+**Next Step:** Skylar — create the worktree via `bash scripts/worktree-add.sh .worktrees/s10-t2-e2e-baseline track/s10-t2-e2e-baseline`. Read `tests/helpers/auth.ts` on the new branch (post-T1 surface) so you understand the HS256 forge path. If pre-test setup fails on local D1 migration drift, run `pnpm --filter @agent-kanban/web db:migrate` once. Run `npx playwright test`. Triage each failure: test-code → fix inline; source-code → log it (file:line, repro, root cause) and tally toward the circuit breaker. At >5 distinct source bugs STOP and emit the structured stop-report. On green, run the regression check and produce the close-out note. Invoke Bandit. No commits unless Tim directs.
+
+---
+
+### HANDOFF BRIDGE — S10-T3
+**Topic:** Biome warning cleanup — schema bump + `useBiomeIgnoreFolder` fix
+**Track:** S10-T3
+**Specialist:** Skylar
+**Static DNA Check:** Aligned — config-only edit at the repo root. No source, no tests, no schema. Parallel-safe with all other tracks.
+**Dynamic DNA State:**
+- **Product Context:** S9-T3 verification surfaced two cosmetic Biome warnings (exit code 0, hooks pass). Skylar deliberately did not fix them to avoid scope creep; they're now this track's whole job.
+- **Current Plan:** Sprint 10 → S10-T3 in this file.
+- **Execution Files:**
+  - `biome.json` — only file modified. (a) `$schema` → `2.4.10` to match installed CLI. (b) `!.worktrees/**` → `!.worktrees` and `!.claude/**` → `!.claude` per `useBiomeIgnoreFolder`.
+
+**Migration Safety:** N/A — config edit, fully reversible.
+**Security Review:** N/A.
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s10-t3-biome-cleanup track/s10-t3-biome-cleanup`
+
+**Verification:**
+1. `pnpm check` from repo root — exits zero, no `useBiomeIgnoreFolder` warnings, no schema-version drift warning.
+2. `git diff biome.json` — only the three lines above changed.
+3. Bandit QA.
+
+**Next Step:** Skylar — open `biome.json`, apply the three line edits, run `pnpm check`. Invoke Bandit.
+
+---
+
+### HANDOFF BRIDGE — S10-T4
+**Topic:** `useBoardSSE` shared provider — lift the per-hook `EventSource` opens into a single `BoardSSEContext` mounted on `BoardPage`
+**Track:** S10-T4
+**Specialist:** Skylar
+**Static DNA Check:** Aligned — React + Vite frontend. Pure refactor of two existing hooks plus a new context provider. No new SSE event types, no schema, no auth, no API change. Behavior preserved: same events flow to the same consumers via the same `boardId`-keyed connection. Parallel-safe with S10-T1/T2/T3.
+**Dynamic DNA State:**
+- **Product Context:** `useBoard` and `useAgentPresence` each call `new EventSource(...)` per board mount; Chrome caps EventSources at ~6 per origin. Two consumers per board × multiple tabs/boards saturates the cap quickly in production. Lifting both onto a single shared connection eliminates the risk before it bites.
+- **Current Plan:** Sprint 10 → S10-T4 in this file.
+- **Execution Files:**
+  - `apps/web/src/hooks/useBoard.ts` — replace the inline `new EventSource(...)` open with a `useBoardSSE()` consumer call.
+  - `apps/web/src/hooks/useAgentPresence.ts` — same: replace the inline EventSource open with a `useBoardSSE()` consumer call.
+  - `apps/web/src/routes/BoardPage.tsx` — mount `<BoardSSEProvider boardId={boardId}>` wrapping the section that hosts both hooks.
+  - **New file:** `apps/web/src/contexts/BoardSSEContext.tsx` (or equivalent path under `apps/web/src/`) — exports `BoardSSEProvider` + `useBoardSSE()`. Provider opens exactly one `EventSource` per `boardId`, exposes typed event subscription so each consumer attaches its own listeners without owning the connection lifecycle.
+
+**Migration Safety:** Reversible — pure refactor; can roll back to per-hook EventSource opens by reverting the three files + deleting the new context.
+**Security Review:** N/A — no auth, schema, or wire-format change. Same SSE endpoint, same events, same scoping.
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s10-t4-sse-provider track/s10-t4-sse-provider`
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — all green.
+2. `pnpm dev` — open a board page. **Open Chrome dev-tools → Network → filter `EventStream` (or `eventsource`)** and confirm exactly **one** open EventSource per board mount (was two — one per hook).
+3. Confirm both consumers still update: open a second tab, perform an action that emits an SSE event, watch the first tab's board view and agent-presence indicators both update.
+4. Navigate between boards — confirm the connection closes cleanly on unmount and a single new connection opens for the new `boardId`.
+5. Bandit QA — confirm no SSE event-type or auth surface change.
+
+**Next Step:** Skylar — read `useBoard.ts` and `useAgentPresence.ts` in full to map the current `EventSource` lifecycle (open, listener wiring, cleanup). Sketch the `BoardSSEContext` API to fit both call sites without behavioral change. Implement context first, migrate hooks second, mount provider last. Run the verification checklist (the dev-tools Network panel check is mandatory, not optional). Invoke Bandit.
+
+---
+
+*Last updated: 2026-05-21 (Sprint 10 CLOSED — all four tracks DONE Bandit PASS and merged + pushed to origin/main. S10-T1 (auth helper HS256 forge), S10-T2 (full E2E sweep: 17→0, 16 specs +81/-51, 0 source bugs, circuit breaker not tripped), S10-T3 (Biome cleanup), S10-T4 (SSE provider lift).)*
+
+---
+
+## Archive: Sprint 9 CLOSED 2026-05-21
 
 Sprint 9 closed 2026-05-21 with all three tracks (S9-T1, S9-T2, S9-T3) merged to main. The full Sprint 9 plan block — objective, tracks, dependency order, DoD, the three Handoff Bridges, and the S9-T3 close-out note — has been moved to `docs/archive/sprint-archive.md`. Track-table archive: `docs/archive/historical_tracks.md`.
 
-Queued for the next sprint open: see `docs/context/tracks.md` → Sprint 10 Candidates (P0 Playwright helper repair, P1 Agent OS install gap, P2 Biome lint warnings cleanup).
-
-*Last updated: 2026-05-21 (Sprint 9 CLOSED — full plan block archived to `docs/archive/sprint-archive.md`.)*
+*Archived: 2026-05-21 (Sprint 9 CLOSED — full plan block archived to `docs/archive/sprint-archive.md`.)*
 
 ---
 

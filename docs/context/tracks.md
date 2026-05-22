@@ -1,34 +1,37 @@
 # Agent Kanban — Active Tracks
 
-## Current Sprint: None — Sprint 9 CLOSED 2026-05-21; Sprint 10 not yet opened
+## Current Sprint: Sprint 11 — Dev-Experience Hardening + Drift Prevention (OPEN 2026-05-21)
 
-Sprint 9 closed 2026-05-21 with all three tracks merged to main. Sprint 9 archive: `docs/archive/historical_tracks.md` (track table) and `docs/archive/sprint-archive.md` (full plan block + Bridges + close-out).
+Full plan in `docs/context/plan.md` § "Current Sprint: Sprint 11". Bridges issued for all 5 tracks 2026-05-21.
 
-See `Sprint 10 Candidates` below for queued work awaiting sprint open.
+| Track  | Goal                                                                                              | Type        | Status  |
+|--------|---------------------------------------------------------------------------------------------------|-------------|---------|
+| S11-T1 | `ak doctor` CLI command verifying gpg, D1 migration state, `.dev.vars` presence, worktree symlinks | Code        | DONE — Bandit PASS (re-run with full lefthook chain), merged + pushed to origin/main 2026-05-21 (`7436063`) |
+| S11-T2 | D1 migration auto-apply via `predev` hook + `postinstall` + `scripts/daemon-smoke-test.sh` preflight | Code      | DONE — Bandit PASS (lefthook chain), merged + pushed to origin/main 2026-05-21 (`5e6b4af`) |
+| S11-T3 | Pre-push Playwright gate (lefthook, `main` only) + `/close-sprint` skill (Playwright + fully clean tree) | Code + skill | DONE — Bandit PASS, merged + pushed to origin/main 2026-05-22 (`5356a0a`) |
+| S11-T4 | T22 daemon E2E smoke twice-green; harden 3 documented script bugs (`set -u` cleanup, opaque `json_query`, undocumented `<runtime>` arg) | Code  | DONE — Bandit PASS on testable scope, merged + pushed to origin/main 2026-05-22 (`3b07d97`). Twice-green deferred to first real operator run (env needed gpg + ak + .dev.vars symlink, exactly the gaps the new preflight surfaces). |
+| S11-T5 | Design spec ONLY for kanban-level non-cryptographic team agents (Peaches/Skylar/Bandit as in-board team members). No code. | Design | Bridge issued — parallel; zero merge requirement (slip ≠ block) |
+
+**Circuit-breaker note:** 5-track sprint is at the upper edge of stability rule. Mitigation: T5 is design-only with zero merge requirement — if it slips it carries forward to Sprint 12 and does NOT block sprint close. Hard close gate is T1+T2+T3+T4 merged green.
 
 ---
 
-## Future Backlog (post-Sprint 9)
+## Future Backlog (Sprint 12 Candidates)
 
-Items not yet sprint-scoped. Some unblock once specific work lands; others are pre-existing.
+Items deferred from Sprint 11 planning. Some are pre-existing; others surfaced during Sprint 10 close.
 
-### Sprint 10 Candidates
+### Carry-forward from Sprint 11
 
-- **[P0] Fix Playwright auth helper for `requireEmailVerification`** — the helper at `tests/helpers/auth.ts:120-122` writes `emailVerified=1` via the external `sqlite3` CLI; Miniflare's open D1 handle does not see those writes, so every spec calling `signUpAndGetBoard` (and the `signUpVerified` variant) fails with `EMAIL_NOT_VERIFIED` 403. Affected: every Playwright spec calling `signUpAndGetBoard` since 2026-05-04 (confirmed via sibling spec `tests/header/header-elements.spec.ts` failing identically to S9-T3's `tests/e2e/backlog.spec.ts`). Causal commit: `a4f8f76 feat(auth): require email verification` — `requireEmailVerification: true` hardcoded at `apps/web/server/betterAuth.ts:25`. Recommended fix path: replace external sqlite3 write with Better Auth admin-API call, or harvest the verification token via a test mailer. Do NOT gate `requireEmailVerification` on env — that changes production behavior. Blocked S9-T3 from producing E2E proof; landing this unblocks every E2E spec going forward.
-- **[P1] Investigate Agent OS install gap (team-as-UI-agents)** — surfaced 2026-05-21. Two related symptoms: (a) the project's `.claude/agents/peaches.md|skylar.md|bandit.md` are not loading as Claude Code `subagent_type` invocations, while the playwright agents in the same directory do load (diagnostic gap); (b) Tim's longer-term direction is for the team to appear in the Agents UI of the kanban board itself as non-cryptographic project-team members, not as Claude Code subagents at all. Investigation scope, not a fix-it ticket — confirm the diagnostic asymmetry, then decide whether to repair the local subagent loader, migrate to in-board agents, or both. Full diagnosis at `/Users/I826932/.claude/projects/-Users-I826932-Developer-agent-kanban/memory/project_agent_os_role_drift.md`.
-- **[P2] Biome v2.x lint warnings cleanup** — surfaced during S9-T3 verification on 2026-05-21. Two cosmetic warnings, exit code 0, hooks pass — Skylar deliberately did not fix to avoid scope creep. (a) `biome.json` `$schema` declares `2.4.8`; installed CLI is `2.4.10` — schema version drift causing a non-blocking warning. Bump to current. (b) `useBiomeIgnoreFolder` rule wants `!.worktrees` and `!.claude` (no `/**` suffix); current file uses `!.worktrees/**` and `!.claude/**` — semantically equivalent but flags the warning. Drop the `/**` suffix on both folder ignores. Pure cosmetic cleanup; ship in any low-risk slot.
+- **[P1] Investigate Agent OS install gap (team-as-UI-agents)** — **ABSORBED into S11-T5 design scope.** S11-T5 produces the design spec for kanban-level non-cryptographic team agents in Sprint 11. Sprint 12 implements on top of that spec. Original diagnosis at `/Users/I826932/.claude/projects/-Users-I826932-Developer-agent-kanban/memory/project_agent_os_role_drift.md` remains the source for the (a) symptom investigation; the longer-term migration to in-board team members is being designed in S11-T5.
 
 ### Longstanding
 
-- **T22 (re-scoped)** — CLI daemon end-to-end smoke test. Cold-run on 2026-05-21 found prerequisite gaps (missing `gpg`, broken `set -u` cleanup in script, opaque `json_query` errors, mandatory `<runtime>` argument undocumented). Re-scoped to: stand up local stack → harden script (3 specific bugs) → run twice green for idempotency → Bandit on script diff only. Original board task `7lqed55p3yxl` carries forward.
-- **GPG prerequisite track (NEW)** — `ak start` requires `gpg` for signing agent commits but it isn't installed on Tim's workstation and there's no preflight check or setup doc. Add either a preflight check in `scripts/install-cli.sh` or a new `ak doctor` command that verifies daemon prerequisites. Blocks T22.
 - **Peaches task-refinement workflow** — when Tim describes a task in non-engineering language, Peaches should refine it into engineering-aligned cards before Skylar executes. Concept; needs scoping. Board task `d5kv1hfw1d2v`.
-- **Lift `useBoardSSE` into shared provider** (from T24 follow-up) — `useBoard` and `useAgentPresence` each open their own EventSource per board mount; Chrome caps at ~6 per origin. Lift to a `BoardSSEContext` provider in `BoardPage.tsx` so consumers share one connection.
 - ~~**`useAgentPresence` choreography for `released`/`timed_out`**~~ — DROPPED 2026-05-21. Card movement for both actions already works via T24's `STATUS_CHANGING_ACTIONS` invalidation in `useBoard.ts`. Tim confirmed agent-drag animation is not required: cards move on their own as close to real time as the SSE poll allows. No further work needed.
 
 ---
 
-*Last updated: 2026-05-21 (Sprint 9 CLOSED — all three tracks (S9-T1, S9-T2, S9-T3) merged to main; full plan block moved to `docs/archive/sprint-archive.md`, track table moved to `docs/archive/historical_tracks.md`. Sprint 10 Candidates: P0 Playwright helper repair, P1 Agent OS install gap, P2 Biome lint warnings cleanup.)*
+*Last updated: 2026-05-21 (Sprint 11 OPEN — five tracks: S11-T1 `ak doctor`, S11-T2 D1 migrate auto-apply, S11-T3 pre-push Playwright gate + `/close-sprint` skill, S11-T4 daemon smoke twice-green + 3 script bugs, S11-T5 design spec for kanban team agents. Bridges issued for all 5. [P1] Agent OS install gap absorbed into S11-T5. [P2] D1 migration drift becomes S11-T2.)*
 
 ---
 
@@ -36,6 +39,17 @@ Items not yet sprint-scoped. Some unblock once specific work lands; others are p
 
 **MANDATORY: Always use `scripts/worktree-add.sh`, never raw `git worktree add`.**
 See AGENTIC.md §4 for the full explanation. pnpm's hoisted `node_modules` are not present in raw worktrees — the script symlinks them.
+
+---
+
+## Archive: Sprint 10 Tracks (CLOSED 2026-05-21)
+
+| Track  | Goal                                                                                                                            | Status      |
+|--------|---------------------------------------------------------------------------------------------------------------------------------|-------------|
+| S10-T1 | Playwright auth helper repair — fix `tests/helpers/auth.ts:120-122` via Better Auth admin API or test-mailer; do NOT gate `requireEmailVerification` on env | DONE — Bandit PASS, merged + pushed to origin/main 2026-05-21 |
+| S10-T2 | Full E2E baseline restoration — sweep every test-code failure surfaced by S10-T1 unblock; circuit breaker at >5 distinct source bugs | DONE — Bandit PASS (independent), merged + pushed to origin/main 2026-05-21. 0 source bugs found across 17 surfaced failures; 16 test files +81/-51; circuit breaker not tripped. |
+| S10-T3 | Biome warning cleanup — `biome.json` `$schema` → 2.4.10; drop `/**` suffix on `!.worktrees` and `!.claude` per `useBiomeIgnoreFolder` | DONE — Bandit PASS, merged + pushed to origin/main 2026-05-21 |
+| S10-T4 | `useBoardSSE` shared provider lift — single `EventSource` per board mount via `BoardSSEContext` mounted on `BoardPage` | DONE — Bandit PASS, merged + pushed to origin/main 2026-05-21 |
 
 ---
 
