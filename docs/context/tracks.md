@@ -6,7 +6,7 @@ Land the team_members entity in the kanban itself: Peaches/Skylar/Bandit become 
 
 | Track  | Goal                                                                                              | Type        | Status      |
 |--------|---------------------------------------------------------------------------------------------------|-------------|-------------|
-| S12-T1 | Review/finalize/merge S11-T5 design draft to `docs/designs/team-agents.md` (Tim resolves §8 open questions; Peaches edits to reflect calls; doc merges) | Paper close-gate | Bridge issued — lands first; gates T2 |
+| S12-T1 | Review/finalize/merge S11-T5 design draft to `docs/designs/team-agents.md` (Tim resolves §8 open questions; Peaches edits to reflect calls; doc merges) | Paper close-gate | DONE — Tim approved 2026-05-22; doc landed at `docs/designs/team-agents.md` (paper only, no Bandit) |
 | S12-T2 | `team_members` Phase 1 — migration, `BUILTIN_TEAM_MEMBERS` seed, `teamMemberRepo.ts`, list endpoint, `TeamCard` component, Team section in `AgentsPage` | Code close-gate | Bridge issued — depends on T1 merge |
 
 **Sprint close gate:** S12-T1 and S12-T2 merged to `main` and green. Full Sprint 12 plan + Bridges in `docs/context/plan.md`. **Strategic note:** Tim chose 2026-05-22 to focus on kanban product first, then run a deep Agent OS install diagnostic before any further team-agent or meta-loop investment.
