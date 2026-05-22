@@ -1,4 +1,14 @@
-import type { BoardWithTasks, MachineRuntime, Sprint, SprintStatus, UsageInfo } from "@agent-kanban/shared";
+import type {
+  BacklogItem,
+  BacklogItemStatus,
+  BoardWithTasks,
+  CreateBacklogItemInput,
+  MachineRuntime,
+  Sprint,
+  SprintStatus,
+  UpdateBacklogItemInput,
+  UsageInfo,
+} from "@agent-kanban/shared";
 import { getVersion } from "../version.js";
 
 export class ApiError extends Error {
@@ -268,5 +278,23 @@ export abstract class ApiClient {
   }
   transitionSprint(sprintId: string, status: SprintStatus) {
     return this.request<Sprint>("PATCH", `/api/sprints/${sprintId}`, { status });
+  }
+
+  // Backlog Items
+  createBacklogItem(boardId: string, input: CreateBacklogItemInput) {
+    return this.request<BacklogItem>("POST", `/api/boards/${boardId}/backlog-items`, input);
+  }
+  listBacklogItems(boardId: string, params?: { status?: BacklogItemStatus }) {
+    const qs = params?.status ? `?status=${encodeURIComponent(params.status)}` : "";
+    return this.request<BacklogItem[]>("GET", `/api/boards/${boardId}/backlog-items${qs}`);
+  }
+  getBacklogItem(id: string) {
+    return this.request<BacklogItem>("GET", `/api/backlog-items/${id}`);
+  }
+  updateBacklogItem(id: string, patch: UpdateBacklogItemInput) {
+    return this.request<BacklogItem>("PATCH", `/api/backlog-items/${id}`, patch);
+  }
+  deleteBacklogItem(id: string) {
+    return this.request<{ ok: true }>("DELETE", `/api/backlog-items/${id}`);
   }
 }

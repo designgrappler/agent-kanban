@@ -257,6 +257,34 @@ export function formatSprintList(sprints: any[]): string {
   return lines.join("\n");
 }
 
+export function formatBacklog(item: any): string {
+  const lines: string[] = [];
+  lines.push(`${item.title}`);
+  lines.push(`  ID:         ${item.id}`);
+  lines.push(`  Board:      ${item.board_id}`);
+  lines.push(`  Priority:   ${item.priority}`);
+  lines.push(`  Status:     ${item.status}`);
+  if (item.created_by) lines.push(`  Created by: ${item.created_by}`);
+  if (item.created_at) lines.push(`  Created:    ${item.created_at}`);
+  if (item.updated_at) lines.push(`  Updated:    ${item.updated_at}`);
+  if (item.consumed_at) lines.push(`  Consumed:   ${item.consumed_at}`);
+  if (item.consumed_into_task_id) lines.push(`  Into task:  ${item.consumed_into_task_id}`);
+  if (item.description) lines.push(`\n  ${item.description}`);
+  return lines.join("\n");
+}
+
+export function formatBacklogList(items: any[]): string {
+  if (items.length === 0) return "No backlog items found.";
+
+  const lines = items.map((i) => {
+    const priority = `[${i.priority}]`.padEnd(6);
+    const status = `[${i.status}]`.padEnd(14);
+    return `  ${i.id}  ${priority} ${status} ${i.title}`.trimEnd();
+  });
+
+  return lines.join("\n");
+}
+
 export function formatBoard(board: any): string {
   const columnOrder = ["todo", "in_progress", "in_review", "done", "cancelled"];
   const columnLabels: Record<string, string> = {
