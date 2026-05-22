@@ -10,17 +10,47 @@ set -euo pipefail
 #   4. Cancel      — create task → cancel while agent is running → daemon kills agent
 #
 # Usage: ./scripts/daemon-smoke-test.sh <runtime> [board_id] [repo_id]
-# Missing arguments are discovered or created. Defaults target the Demo board
-# and the slink repository.
+#        ./scripts/daemon-smoke-test.sh --runtime <runtime> [board_id] [repo_id]
+#
+# Arguments:
+#   <runtime>    Required. One of: codex, claude, gemini, copilot.
+#                Resolution chosen: explicit required arg with a usage() block
+#                (default-to-claude was rejected because tests/daemon-smoke-script.test.ts
+#                pins the "runtime is required" / usage string contract).
+#   [board_id]   Optional. Auto-discovered (Demo) or created if absent.
+#   [repo_id]    Optional. Auto-discovered (slink) or created if absent.
+#
+# Preflight runs `ak doctor` (S11-T1) and `pnpm --filter @agent-kanban/web db:migrate`
+# (S11-T2) before the smoke body. ak doctor surfaces gpg/.dev.vars/migrations/worktree
+# gaps cleanly so the smoke aborts with a clear pointer instead of a cryptic mid-run error.
+
+usage() {
+  cat <<'USAGE' >&2
+Usage: ./scripts/daemon-smoke-test.sh <runtime> [board_id] [repo_id]
+       ./scripts/daemon-smoke-test.sh --runtime <runtime> [board_id] [repo_id]
+
+  <runtime>   Required: codex | claude | gemini | copilot
+  [board_id]  Optional: auto-discovers Demo board, or creates one
+  [repo_id]   Optional: auto-discovers slink repo, or creates one
+
+The runtime arg has no default; tests pin "runtime is required". Pass
+`--runtime <name>` (long-form) or as the first positional arg.
+USAGE
+}
 
 SMOKE_RUNTIME=""
 ARGS=()
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
     --runtime)
       SMOKE_RUNTIME="${2:-}"
       if [ -z "$SMOKE_RUNTIME" ]; then
-        echo "FATAL: --runtime requires a value"
+        echo "FATAL: --runtime requires a value" >&2
+        usage
         exit 1
       fi
       shift 2
@@ -29,6 +59,15 @@ while [ "$#" -gt 0 ]; do
       SMOKE_RUNTIME="${1#*=}"
       shift
       ;;
+    --)
+      shift
+      while [ "$#" -gt 0 ]; do ARGS+=("$1"); shift; done
+      ;;
+    -*)
+      echo "FATAL: unknown flag: $1" >&2
+      usage
+      exit 1
+      ;;
     *)
       ARGS+=("$1")
       shift
@@ -36,16 +75,24 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-BOARD_ID="${ARGS[0]:-}"
+# Positional resolution (unambiguous): when --runtime flag was NOT used, the
+# first positional IS the runtime. board_id/repo_id slide accordingly. This
+# replaces the previous "shift positionals around" fallback which silently
+# accepted ambiguous orderings.
 if [ -z "$SMOKE_RUNTIME" ]; then
-  SMOKE_RUNTIME="$BOARD_ID"
+  SMOKE_RUNTIME="${ARGS[0]:-}"
   BOARD_ID="${ARGS[1]:-}"
   REPO_ID="${ARGS[2]:-}"
 else
+  BOARD_ID="${ARGS[0]:-}"
   REPO_ID="${ARGS[1]:-}"
 fi
-AGENT_ID=""
 
+# ── Initialize ALL variables referenced by cleanup BEFORE registering the trap. ─
+# `set -u` will fail the cleanup path with "unbound variable" if a variable
+# referenced in the trap isn't initialized. This includes paths exercised when
+# the smoke aborts during preflight (ak doctor, db:migrate, board/repo discovery).
+AGENT_ID=""
 PASS=0
 FAIL=0
 TASKS=()
@@ -54,17 +101,31 @@ SUBAGENT_ID=""
 SUBAGENT_USERNAME=""
 AGENT_RUNTIME=""
 CREATED_AGENT_IDS=()
+# Vars referenced later in the smoke body — pre-init so the trap (or any
+# early-exit) never trips set -u when reading them.
+T1=""
+T4=""
+PR=""
+DAEMON_STATUS=""
+STATUS_AFTER_REJECT=""
+STATUS_AFTER_COMPLETE=""
+STATUS_AFTER_CANCEL=""
+T4_STATUS=""
 
 cleanup() {
+  # Guard each reference: bash arrays under `set -u` need ${arr[@]:-} for the
+  # empty-array case on older bash (3.2 ships on macOS).
   if [ "${#TASKS[@]}" -gt 0 ]; then
     for tid in "${TASKS[@]}"; do
       ak task cancel "$tid" >/dev/null 2>&1 || true
     done
   fi
-  for agent_id in "${CREATED_AGENT_IDS[@]}"; do
-    ak delete agent "$agent_id" >/dev/null 2>&1 || true
-  done
-  if [ -n "$SUBAGENT_ID" ]; then
+  if [ "${#CREATED_AGENT_IDS[@]}" -gt 0 ]; then
+    for agent_id in "${CREATED_AGENT_IDS[@]}"; do
+      ak delete agent "$agent_id" >/dev/null 2>&1 || true
+    done
+  fi
+  if [ -n "${SUBAGENT_ID:-}" ]; then
     ak delete subagent "$SUBAGENT_ID" >/dev/null 2>&1 || true
   fi
 }
@@ -115,14 +176,53 @@ task_session_status() {
 
 json_query() {
   local query="$1"
-  node -e "
+  local input output rc
+  # Buffer stdin so we can replay it for diagnostics on parse failure.
+  input="$(cat)"
+  if output=$(printf '%s' "$input" | node -e "
 const fs = require('fs');
 const data = JSON.parse(fs.readFileSync(0, 'utf8'));
 const result = ($query);
 if (result === undefined || result === null) process.exit(1);
 if (typeof result === 'object') console.log(JSON.stringify(result));
 else console.log(result);
-"
+" 2>&1); then
+    printf '%s\n' "$output"
+    return 0
+  fi
+  rc=$?
+  # Redaction: scrub auth tokens, cookies, machine API keys, and JWTs from
+  # response body BEFORE printing. Each pattern is intentionally narrow.
+  #   ak_<base62>          — machine API keys (issued by @better-auth/api-key)
+  #   "authorization":"…"   — bearer headers in JSON envelopes
+  #   "cookie":"…"          — session cookies
+  #   "api[_-]?key":"…"     — generic api-key fields
+  #   "token":"…"           — JWT/access tokens
+  #   eyJ…\.…\.…            — bare JWTs not inside a json field
+  local redacted body_excerpt
+  redacted="$(printf '%s' "$input" \
+    | sed -E \
+        -e 's/ak_[A-Za-z0-9_-]+/[REDACTED-AK-KEY]/g' \
+        -e 's/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_.+\/=_-]+/[REDACTED-JWT]/g' \
+        -e 's/("([Aa]uthorization|[Cc]ookie|[Aa]pi[_-]?[Kk]ey|[Tt]oken)"[[:space:]]*:[[:space:]]*")[^"]*/\1[REDACTED]/g')"
+  body_excerpt="$(printf '%s' "$redacted" | head -c 500)"
+  {
+    echo "FATAL: json_query parse/select failed"
+    echo "  query:   $query"
+    echo "  body[<=500B redacted]:"
+    printf '%s\n' "$body_excerpt" | sed 's/^/    /'
+    if [ -n "${output:-}" ]; then
+      # node's own stderr (if any) — also redacted in case it echoed input
+      local node_err
+      node_err="$(printf '%s' "$output" \
+        | sed -E \
+            -e 's/ak_[A-Za-z0-9_-]+/[REDACTED-AK-KEY]/g' \
+            -e 's/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_.+\/=_-]+/[REDACTED-JWT]/g' \
+            -e 's/("([Aa]uthorization|[Cc]ookie|[Aa]pi[_-]?[Kk]ey|[Tt]oken)"[[:space:]]*:[[:space:]]*")[^"]*/\1[REDACTED]/g')"
+      echo "  node:    $node_err"
+    fi
+  } >&2
+  exit 1
 }
 
 discover_board() {
@@ -266,7 +366,19 @@ fail() { echo "  FAIL: $1"; FAIL=$((FAIL + 1)); }
 
 echo "=== Daemon Smoke Test ==="
 
-# Preflight: ensure local D1 schema matches committed migrations.
+# Preflight 1 (S11-T1): ak doctor — surface gpg/.dev.vars/migrations/worktree
+# gaps cleanly before the smoke body. ak doctor exits non-zero only on FAIL
+# (WARNs are tolerated). Capture and propagate the exit code.
+echo "Preflight: ak doctor"
+DOCTOR_RC=0
+pnpm exec ak doctor || DOCTOR_RC=$?
+if [ "$DOCTOR_RC" -ne 0 ]; then
+  echo "FATAL: ak doctor reported failures (exit $DOCTOR_RC)." >&2
+  echo "       Run \`ak doctor\` and fix the reported issues before retrying." >&2
+  exit "$DOCTOR_RC"
+fi
+
+# Preflight 2 (S11-T2): ensure local D1 schema matches committed migrations.
 pnpm --filter @agent-kanban/web db:migrate >/dev/null
 
 if [ -z "$BOARD_ID" ]; then BOARD_ID="$(discover_board 2>/dev/null || true)"; fi
@@ -274,7 +386,8 @@ if [ -z "$BOARD_ID" ]; then BOARD_ID="$(create_board)"; fi
 if [ -z "$REPO_ID" ]; then REPO_ID="$(discover_repo 2>/dev/null || true)"; fi
 if [ -z "$REPO_ID" ]; then REPO_ID="$(create_repo)"; fi
 if [ -z "$SMOKE_RUNTIME" ]; then
-  echo "FATAL: runtime is required. Usage: ./scripts/daemon-smoke-test.sh <runtime> [board_id] [repo_id]"
+  echo "FATAL: runtime is required. Usage: ./scripts/daemon-smoke-test.sh <runtime> [board_id] [repo_id]" >&2
+  usage
   exit 1
 fi
 case "$SMOKE_RUNTIME" in
