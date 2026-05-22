@@ -2,7 +2,13 @@
 
 ---
 
-## Current Sprint: Sprint 12 — Team Members Phase 1 (kanban product) (OPEN 2026-05-22)
+## Current Sprint: None — Sprint 12 CLOSED 2026-05-22; Sprint 13 not yet opened
+
+Sprint 12 closed 2026-05-22 with both close-gate tracks (T1 paper + T2 code) merged to main. `/close-sprint` skill dogfooded at close: working-tree clean + Playwright 80 passed / 8 skipped. Strategic note: Sprint 13 is the dedicated Agent OS install diagnostic per Tim's pivot — investigation only, no code changes. Full archive immediately below.
+
+---
+
+## Archive: Sprint 12 — Team Members Phase 1 (kanban product) (CLOSED 2026-05-22)
 
 ### Objective
 

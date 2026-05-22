@@ -1,15 +1,12 @@
 # Agent Kanban — Active Tracks
 
-## Current Sprint: Sprint 12 — Team Members Phase 1 (kanban product) (OPEN 2026-05-22)
+## Current Sprint: None — Sprint 12 CLOSED 2026-05-22; Sprint 13 not yet opened
 
-Land the team_members entity in the kanban itself: Peaches/Skylar/Bandit become first-class non-cryptographic team members in the UI and database. Phase 1 only (table + seed + list + UI section); Phase 2 (action attribution, `ak team sync`, chat) is explicitly out of scope. **All meta-loop work (Agent OS install diagnostic, `/sprint-open` skill, env hygiene, smoke twice-green) is deferred to Sprint 13 (diagnostic) and Sprint 14 (react to findings).**
+Sprint 12 closed 2026-05-22 with both close-gate tracks (T1 paper + T2 code) merged to main. `/close-sprint` skill dogfooded: working-tree clean + Playwright 80 passed / 8 skipped at close.
 
-| Track  | Goal                                                                                              | Type        | Status      |
-|--------|---------------------------------------------------------------------------------------------------|-------------|-------------|
-| S12-T1 | Review/finalize/merge S11-T5 design draft to `docs/designs/team-agents.md` (Tim resolves §8 open questions; Peaches edits to reflect calls; doc merges) | Paper close-gate | DONE — Tim approved 2026-05-22; doc landed at `docs/designs/team-agents.md` (paper only, no Bandit) |
-| S12-T2 | `team_members` Phase 1 — migration, `BUILTIN_TEAM_MEMBERS` seed, `teamMemberRepo.ts`, list endpoint, `TeamCard` component, Team section in `AgentsPage` | Code close-gate | DONE — Bandit PASS (3 flags addressed in `e0d33ef`: bio column, `:username` endpoint documented, reverse cross-table check), merged + pushed to origin/main 2026-05-22 (`0ce67d0`) |
+**Strategic note:** Sprint 13 is the dedicated Agent OS install diagnostic per Tim's pivot — investigation only, no code changes. Sprint 14 reacts to S13 findings and absorbs deferred items.
 
-**Sprint close gate:** S12-T1 and S12-T2 merged to `main` and green. Full Sprint 12 plan + Bridges in `docs/context/plan.md`. **Strategic note:** Tim chose 2026-05-22 to focus on kanban product first, then run a deep Agent OS install diagnostic before any further team-agent or meta-loop investment.
+See `Sprint 13 — Agent OS install diagnostic` and `Sprint 14 — Carry-forward` sections below.
 
 ---
 
@@ -45,7 +42,7 @@ Items deferred from Sprint 12's original plan; will be re-prioritized after the 
 
 ---
 
-*Last updated: 2026-05-22 (Sprint 12 OPEN — rescoped from 7 tracks to 2 close-gate (S12-T1 design merge, S12-T2 team_members Phase 1) per strategic pivot: kanban product first, then Sprint 13 = dedicated Agent OS install diagnostic, then Sprint 14 = react to findings + carry-forward.)*
+*Last updated: 2026-05-22 (Sprint 12 CLOSED — both close-gate tracks (S12-T1 design merge `a9732c3`, S12-T2 team_members Phase 1 `0ce67d0`) merged green. `/close-sprint` skill dogfooded: working-tree clean + Playwright 80/0/8.)*
 
 ---
 
@@ -53,6 +50,15 @@ Items deferred from Sprint 12's original plan; will be re-prioritized after the 
 
 **MANDATORY: Always use `scripts/worktree-add.sh`, never raw `git worktree add`.**
 See AGENTIC.md §4 for the full explanation. pnpm's hoisted `node_modules` are not present in raw worktrees — the script symlinks them.
+
+---
+
+## Archive: Sprint 12 Tracks (CLOSED 2026-05-22)
+
+| Track  | Goal                                                                                              | Status  |
+|--------|---------------------------------------------------------------------------------------------------|---------|
+| S12-T1 | Review/finalize/merge S11-T5 design draft to `docs/designs/team-agents.md` (Tim resolves §8 open questions; Peaches edits to reflect calls; doc merges) | DONE — Tim approved 2026-05-22; doc landed at `docs/designs/team-agents.md` (paper only, no Bandit) (`a9732c3`) |
+| S12-T2 | `team_members` Phase 1 — migration, `BUILTIN_TEAM_MEMBERS` seed, `teamMemberRepo.ts`, list endpoint, `TeamCard` component, Team section in `AgentsPage` | DONE — Bandit PASS (3 flags addressed in `e0d33ef`: bio column, `:username` endpoint documented, reverse cross-table check), merged + pushed to origin/main 2026-05-22 (`0ce67d0`) |
 
 ---
 
