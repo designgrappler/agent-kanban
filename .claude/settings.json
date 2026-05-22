@@ -3,6 +3,18 @@
     "commit": "",
     "pr": ""
   },
+  "permissions": {
+    "allow": [
+      "Bash(pnpm tsc --noEmit *)",
+      "Bash(npx vitest run *)",
+      "mcp__auggie__codebase-retrieval",
+      "mcp__playwright-test__browser_snapshot",
+      "mcp__playwright-test__browser_take_screenshot",
+      "Bash(git worktree add *)",
+      "Bash(git worktree remove *)",
+      "Bash(bash scripts/worktree-add.sh *)"
+    ]
+  },
   "hooks": {
     "Stop": [
       {
