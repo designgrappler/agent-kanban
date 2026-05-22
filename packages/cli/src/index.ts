@@ -8,6 +8,7 @@ import { registerBacklogCommand } from "./commands/backlog.js";
 import { registerCreateCommand } from "./commands/create.js";
 import { registerDeleteCommand } from "./commands/delete.js";
 import { registerDescribeCommand } from "./commands/describe.js";
+import { registerDoctorCommand } from "./commands/doctor.js";
 import { registerGetCommand } from "./commands/get.js";
 import { registerSprintCommand } from "./commands/sprint.js";
 import { registerLogsCommand, registerRestartCommand, registerStartCommand, registerStatusCommand, registerStopCommand } from "./commands/start.js";
@@ -73,6 +74,7 @@ const helpSections: [string, [string, string][]][] = [
     ],
   ],
   ["Output", [["-o json|yaml|wide", "Output format (default: text table)"]]],
+  ["Diagnostics", [["doctor", "Verify local dev-environment prerequisites"]]],
 ];
 
 program.helpInformation = () => {
@@ -218,6 +220,7 @@ registerApplyCommand(program);
 registerWaitCommand(program);
 registerSprintCommand(program);
 registerBacklogCommand(program);
+registerDoctorCommand(program);
 
 // ─── Identity ───
 
