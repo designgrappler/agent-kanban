@@ -1,22 +1,29 @@
 # Agent Kanban — Active Tracks
 
-## Current Sprint: Sprint 8 — Sprints + Tracks Foundation (OPENED 2026-05-21)
+## Current Sprint: Sprint 9 — Backlog Tab (OPENED 2026-05-21)
 
-> Foundation sprint for the north-star architecture (`docs/context/north-star.md`). Establishes `Sprint` as a first-class entity with `S{n}-T{m}` track numbering and renames the TODO column to TRACKS. Backlog tab, planning trigger, and agent-definition sync arrive in Sprints 9–11.
+> Per north-star architecture (`docs/context/north-star.md` §UI Changes / §Data Model). Adds the **Backlog** tab as the entry point of the core loop: `Backlog → Plan → Sprint → Tracks → Done`. Introduces `backlog_items` table, board-scoped backlog CRUD, and a Backlog tab in the global header. Multi-select + "Create plan" trigger lands in Sprint 10.
 
 | Track | Goal | Status |
 |---|---|---|
-| S8-T1 | Backend: `sprints` table + `tasks.sprint_id` + `track_number`; backfill 4–7; sprint repo + routes | PLANNED |
-| S8-T2 | CLI: `ak sprint open|close|list` | PLANNED — depends on S8-T1 |
-| S8-T3 | Frontend: TRACKS rename, SprintHeader banner, S{n}-T{m} chip, `useSprint` hook | PLANNED — depends on S8-T1 |
+| S9-T1 | Backend + Schema: `backlog_items` migration, repo, Hono routes, auth rules, shared types | DONE — Bandit PASS |
+| S9-T2 | CLI: `ak backlog add\|list\|update\|delete` (depends on S9-T1) | DONE — Bandit PASS |
+| S9-T3 | Frontend: `/boards/:id/backlog` page, components, `useBacklogItems` hook, Playwright spec | VERIFIED — awaiting commit (E2E waived; helper broken since 2026-05-04, see Sprint 10 P0) |
 
-See `docs/context/plan.md` for Definition of Done and Handoff Bridges.
+See `docs/context/plan.md` for Definition of Done, Dependency Order, and the three Handoff Bridges issued 2026-05-21.
 
 ---
 
-## Future Backlog (post-Sprint 8)
+## Future Backlog (post-Sprint 9)
 
-Items not in Sprint 8. Some unblock once S8 lands; others are pre-existing.
+Items not in Sprint 9. Some unblock once S9 lands; others are pre-existing.
+
+### Sprint 10 Candidates
+
+- **[P0] Fix Playwright auth helper for `requireEmailVerification`** — the helper at `tests/helpers/auth.ts:120-122` writes `emailVerified=1` via the external `sqlite3` CLI; Miniflare's open D1 handle does not see those writes, so every spec calling `signUpAndGetBoard` (and the `signUpVerified` variant) fails with `EMAIL_NOT_VERIFIED` 403. Affected: every Playwright spec calling `signUpAndGetBoard` since 2026-05-04 (confirmed via sibling spec `tests/header/header-elements.spec.ts` failing identically to S9-T3's `tests/e2e/backlog.spec.ts`). Causal commit: `a4f8f76 feat(auth): require email verification` — `requireEmailVerification: true` hardcoded at `apps/web/server/betterAuth.ts:25`. Recommended fix path: replace external sqlite3 write with Better Auth admin-API call, or harvest the verification token via a test mailer. Do NOT gate `requireEmailVerification` on env — that changes production behavior. Blocked S9-T3 from producing E2E proof; landing this unblocks every E2E spec going forward.
+- **[P1] Investigate Agent OS install gap (team-as-UI-agents)** — surfaced 2026-05-21. Two related symptoms: (a) the project's `.claude/agents/peaches.md|skylar.md|bandit.md` are not loading as Claude Code `subagent_type` invocations, while the playwright agents in the same directory do load (diagnostic gap); (b) Tim's longer-term direction is for the team to appear in the Agents UI of the kanban board itself as non-cryptographic project-team members, not as Claude Code subagents at all. Investigation scope, not a fix-it ticket — confirm the diagnostic asymmetry, then decide whether to repair the local subagent loader, migrate to in-board agents, or both. Full diagnosis at `/Users/I826932/.claude/projects/-Users-I826932-Developer-agent-kanban/memory/project_agent_os_role_drift.md`.
+
+### Longstanding
 
 - **T22 (re-scoped)** — CLI daemon end-to-end smoke test. Cold-run on 2026-05-21 found prerequisite gaps (missing `gpg`, broken `set -u` cleanup in script, opaque `json_query` errors, mandatory `<runtime>` argument undocumented). Re-scoped to: stand up local stack → harden script (3 specific bugs) → run twice green for idempotency → Bandit on script diff only. Original board task `7lqed55p3yxl` carries forward.
 - **GPG prerequisite track (NEW)** — `ak start` requires `gpg` for signing agent commits but it isn't installed on Tim's workstation and there's no preflight check or setup doc. Add either a preflight check in `scripts/install-cli.sh` or a new `ak doctor` command that verifies daemon prerequisites. Blocks T22.
@@ -26,7 +33,7 @@ Items not in Sprint 8. Some unblock once S8 lands; others are pre-existing.
 
 ---
 
-*Last updated: 2026-05-21 (Sprint 8 OPENED — Sprints + Tracks foundation. Three tracks planned: S8-T1 backend, S8-T2 CLI, S8-T3 frontend. Backfill strategy approved for synthetic Sprints 4–7.)*
+*Last updated: 2026-05-21 (S9-T1/S9-T2 DONE Bandit PASS, merged; S9-T3 VERIFIED gates green, E2E waived per Tim, awaiting merge — Playwright helper repair queued as Sprint 10 P0; Agent OS install gap queued as Sprint 10 P1. Sprint 8 CLOSED — all three tracks DONE Bandit PASS, merged to main.)*
 
 ---
 
@@ -34,6 +41,16 @@ Items not in Sprint 8. Some unblock once S8 lands; others are pre-existing.
 
 **MANDATORY: Always use `scripts/worktree-add.sh`, never raw `git worktree add`.**
 See AGENTIC.md §4 for the full explanation. pnpm's hoisted `node_modules` are not present in raw worktrees — the script symlinks them.
+
+---
+
+## Archive: Sprint 8 Tracks (CLOSED 2026-05-21)
+
+| Track | Goal | Status |
+|---|---|---|
+| S8-T1 | Backend: `sprints` table + `tasks.sprint_id` + `track_number`; backfill 4–7; sprint repo + routes | DONE — Bandit PASS |
+| S8-T2 | CLI: `ak sprint open|close|list` | DONE — Bandit PASS |
+| S8-T3 | Frontend: TRACKS rename, SprintHeader banner, S{n}-T{m} chip, `useSprint` hook | DONE — Bandit PASS |
 
 ---
 

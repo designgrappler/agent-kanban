@@ -1,4 +1,14 @@
-import type { AgentRuntime, CreateSprintInput, CreateSubagentInput, Sprint, SprintStatus } from "@agent-kanban/shared";
+import type {
+  AgentRuntime,
+  BacklogItem,
+  BacklogItemStatus,
+  CreateBacklogItemInput,
+  CreateSprintInput,
+  CreateSubagentInput,
+  Sprint,
+  SprintStatus,
+  UpdateBacklogItemInput,
+} from "@agent-kanban/shared";
 import { getAuthToken, refreshAuthToken } from "./auth-client";
 
 const API_BASE = "/api";
@@ -137,6 +147,16 @@ export const api = {
     getActive: (boardId: string) => request<Sprint>("GET", `/boards/${boardId}/sprints/active`),
     create: (boardId: string, body: CreateSprintInput) => request<Sprint>("POST", `/boards/${boardId}/sprints`, body),
     transition: (sprintId: string, status: SprintStatus) => request<Sprint>("PATCH", `/sprints/${sprintId}`, { status }),
+  },
+  backlogItems: {
+    list: (boardId: string, opts?: { status?: BacklogItemStatus }) => {
+      const qs = opts?.status ? `?status=${encodeURIComponent(opts.status)}` : "";
+      return request<BacklogItem[]>("GET", `/boards/${boardId}/backlog-items${qs}`);
+    },
+    get: (id: string) => request<BacklogItem>("GET", `/backlog-items/${id}`),
+    create: (boardId: string, body: CreateBacklogItemInput) => request<BacklogItem>("POST", `/boards/${boardId}/backlog-items`, body),
+    update: (id: string, patch: UpdateBacklogItemInput) => request<BacklogItem>("PATCH", `/backlog-items/${id}`, patch),
+    delete: (id: string) => request<void>("DELETE", `/backlog-items/${id}`),
   },
   admin: {
     getStats: () => request<any>("GET", "/admin/stats"),

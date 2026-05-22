@@ -103,6 +103,16 @@ export function Header() {
               <Button variant="ghost" size="sm" onClick={() => setSwitcherOpen(true)}>
                 {activeBoard.name}
               </Button>
+              <Link
+                to={`/boards/${activeBoard.id}/backlog`}
+                className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+                  location.pathname === `/boards/${activeBoard.id}/backlog`
+                    ? "text-accent bg-accent-soft"
+                    : "text-content-tertiary hover:text-content-secondary hover:bg-surface-tertiary"
+                }`}
+              >
+                Backlog
+              </Link>
               <Tooltip>
                 <TooltipTrigger
                   render={
