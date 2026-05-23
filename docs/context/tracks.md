@@ -1,26 +1,6 @@
 # Agent Kanban — Active Tracks
 
-## Current Sprint: Sprint 13 — UX Polish (OPEN 2026-05-22)
-
-Sprint 13 opened 2026-05-22, immediately after Sprint 12 closed. Theme: UX polish on Sprint 12's team_members work — collapse worker/persona conflation in the UI, fix empty states, consolidate navigation, tighten Create Board UX.
-
-**Strategic note:** the Agent OS install diagnostic is now Sprint 14 (was previously slotted as Sprint 13). Tim's call: ship the kanban polish while the Phase 1 team_members code is fresh; the diagnostic happens one sprint later. Sprint 15 absorbs the previously-deferred S11/S12 carry-forward items.
-
-| Track  | Goal                                                                                                                                                                                      | Type             | Status      |
-|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|-------------|
-| S13-T1 | AgentsPage restructure — drop Sub-agents tab, rename "Agents" → "Team members", remove Workers section, strip tasks/tok/cost/crypto-ID from cards, drop model field; cards = role + @handle | Code close-gate  | DONE — Bandit PASS, merged + pushed to origin/main 2026-05-22 |
-| S13-T2 | Empty state + Add-default-agent flow — zero-state CTAs, "Add backlog items" auto-creates a default board then routes to its backlog, "Recruit an agent" → Default agents picker, custom team-member form (avatar local-file upload + Agent-OS template fields) | Code close-gate  | DONE — Bandit PASS, merged + pushed to origin/main 2026-05-22 |
-| S13-T3 | Navigation consolidation — fold Machines into Settings as "Daemon connection" tab, remove Machines top-nav, drop Repositories from profile menu, move theme toggle into profile menu, add Settings → Labels tab | Code close-gate  | DONE — Bandit PASS, merged + pushed to origin/main 2026-05-22 |
-| S13-T4 | Create Board UX — auto-prefix `S{N}-{user-defined}`, relabel "Board name" → "Sprint board name" and "Theme" → "Sprint theme", remove the terminal command block (AddMachineSteps) from the flow | Code close-gate  | DONE — Bandit PASS, merged + pushed to origin/main 2026-05-22 |
-| S13-S1 | `pnpm dev` auto-open one-liner — `server.open: true` in `apps/web/vite.config.ts`                                                                                                         | Stretch          | Bridge issued — zero merge requirement; folds into whichever close-gate lands first if not opened |
-
-**Close gate:** T1 + T2 + T3 + T4 merged to `main` and green via `/close-sprint`. S1 is stretch; sprint closes without it.
-
-**Dependency order:** T1 → T2 (T2 builds on the restructured surface); T3 and T4 are parallel-safe with T1's work.
-
-**Stability check:** 4 close-gate code tracks at the upper edge of the ≤4 rule. T4 is small, T1 is mostly destructive. Mitigation: surface immediately if any track grows mid-sprint.
-
-See `docs/context/plan.md` for full Bridges (T1, T2, T3, T4, S1).
+## Current Sprint: None — Sprint 13 CLOSED 2026-05-23; Sprint 14 not yet opened
 
 ---
 
@@ -59,7 +39,7 @@ Items deferred from Sprint 12's original plan and re-deferred from the previousl
 
 ---
 
-*Last updated: 2026-05-22 (Sprint 13 OPEN — UX Polish on team_members; close-gate tracks T1/T2/T3/T4 + stretch S1; Bridges in `docs/context/plan.md`. Sprint 14 = Agent OS install diagnostic. Sprint 15 = carry-forward from S11/S12 + previously-S14 items.)*
+*Last updated: 2026-05-23 (Sprint 13 CLOSED; Sprint 14 = Agent OS install diagnostic, not yet opened.)*
 
 ---
 
@@ -67,6 +47,18 @@ Items deferred from Sprint 12's original plan and re-deferred from the previousl
 
 **MANDATORY: Always use `scripts/worktree-add.sh`, never raw `git worktree add`.**
 See AGENTIC.md §4 for the full explanation. pnpm's hoisted `node_modules` are not present in raw worktrees — the script symlinks them.
+
+---
+
+## Archive: Sprint 13 Tracks (CLOSED 2026-05-23)
+
+| Track  | Goal                                                                                                                                                                                      | Type             | Status      |
+|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|-------------|
+| S13-T1 | AgentsPage restructure — drop Sub-agents tab, rename "Agents" → "Team members", remove Workers section, strip tasks/tok/cost/crypto-ID from cards, drop model field; cards = role + @handle | Code close-gate  | DONE — Bandit PASS, merged + pushed to origin/main 2026-05-22 |
+| S13-T2 | Empty state + Add-default-agent flow — zero-state CTAs, "Add backlog items" auto-creates a default board then routes to its backlog, "Recruit an agent" → Default agents picker, custom team-member form (avatar local-file upload + Agent-OS template fields) | Code close-gate  | DONE — Bandit PASS, merged + pushed to origin/main 2026-05-22 |
+| S13-T3 | Navigation consolidation — fold Machines into Settings as "Daemon connection" tab, remove Machines top-nav, drop Repositories from profile menu, move theme toggle into profile menu, add Settings → Labels tab | Code close-gate  | DONE — Bandit PASS, merged + pushed to origin/main 2026-05-22 |
+| S13-T4 | Create Board UX — auto-prefix `S{N}-{user-defined}`, relabel "Board name" → "Sprint board name" and "Theme" → "Sprint theme", remove the terminal command block (AddMachineSteps) from the flow | Code close-gate  | DONE — Bandit PASS, merged + pushed to origin/main 2026-05-22 |
+| S13-S1 | `pnpm dev` auto-open one-liner — `server.open: true` in `apps/web/vite.config.ts`                                                                                                         | Stretch          | NOT SHIPPED — stretch; sprint closed without it |
 
 ---
 

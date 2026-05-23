@@ -2,7 +2,11 @@
 
 ---
 
-## Current Sprint: Sprint 13 — UX Polish on team_members (OPEN 2026-05-22)
+## Current Sprint: None — Sprint 13 CLOSED 2026-05-23; Sprint 14 not yet opened
+
+---
+
+## Archive: Sprint 13 — UX Polish on team_members (CLOSED 2026-05-23)
 
 ### Objective
 
