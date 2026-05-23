@@ -2,7 +2,90 @@
 
 ---
 
-## Current Sprint: Sprint 15 — Agent OS Remediation (OPEN 2026-05-23)
+## Current Sprint: Sprint 16 — Backlog Tab + Daemon Spawn-at-Create (OPEN 2026-05-23)
+
+### Objective
+
+Land the first wedge of the north-star core loop (`Backlog → Plan → Sprint → Tracks → Done`) and close the long-standing daemon onboarding gap left by S13-T4.
+
+Three workstreams: (1) introduce a real backlog data model (`backlog_items` table) with repo + API, (2) ship the Backlog tab UI with multi-select + Create plan trigger, (3) make daemon spawn at board-create time so a brand-new board has a running daemon by default.
+
+This sprint deliberately scopes the backlog feature **without** server-side LLM calls — Create plan emits a clipboard payload (and optional file write) per `north-star.md § Planning Trigger Flow`. Sprint entity (`sprints` table), agent_definitions sync, and full sprint lifecycle remain deferred — only the backlog-half of the loop lands here.
+
+### Tracks
+
+| Track  | Goal                                                                                                                                                                                                                                                                                                                                                | Type            | Owner             | Status     |
+|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|-------------------|------------|
+| S16-T1 | Backlog data model + repo + API — additive `backlog_items` migration (per north-star.md §Data Model), `backlogItemRepo.ts`, REST endpoints under `/api/backlog-items` (list, create, update, delete, bulk-mark-in-planning) scoped to `board_id`, owner-scoped via existing auth middleware. Schema is additive; no changes to `tasks`, `boards`, or auth. | Code close-gate | Skylar (worktree) | Pending    |
+| S16-T2 | Backlog tab UI + planning trigger — new `/boards/:id/backlog` route with priority-grouped list, multi-select checkboxes, create/edit/delete affordances for `idea` items, **Create plan** button that builds the prompt from `north-star.md § Planning Trigger Flow` and copies to clipboard (file-write deferred). DESIGN.md compliance required.   | Code close-gate | Skylar (worktree) | Pending — depends on T1 API |
+| S16-T3 | Daemon spawn-at-create — when a new board is created and the user has a registered machine, prompt to start the daemon and (on confirm) shell out to the same flow `ak start` uses. Closes the TODO left by S13-T4 in the create-board flow. No changes to daemon internals; only the UI/CLI handoff.                                              | Code close-gate | Skylar (worktree) | Pending    |
+| S16-S1 | Env hygiene combo (stretch, deferred from S12-T4) — (a) diagnose + fix `prepare: lefthook install` failure on `pnpm install --frozen-lockfile`; (b) extend `json_query` redaction filter (`refresh_token` + `x-api-key`).                                                                                                                          | Stretch         | Skylar (capacity) | Stretch — no bridge; pick up if T1/T2/T3 land early |
+
+### Dependency Order
+
+```
+S16-T1 (backlog data + API) ──┬── S16-T2 (backlog UI; needs T1 endpoints)
+                              │
+S16-T3 (daemon spawn-at-create) ── independent; touches create-board flow + CLI handoff
+                              │
+S16-S1 (env hygiene) ───────── stretch; independent of all above
+```
+
+T1 must land (or at minimum the API contract must be stable in a worktree Skylar can read from) before T2 begins UI work. T3 is fully parallel-safe with T1/T2 — disjoint files. S16-S1 is stretch, runs only if capacity allows.
+
+### Definition of Done
+
+- [ ] **S16-T1 (backlog data + API):**
+  - [ ] Migration file `apps/web/migrations/<NNNN>_backlog_items.sql` adds the `backlog_items` table per `north-star.md § Data Model` (id, board_id FK, title, description, priority, status, created_at, created_by, consumed_by_sprint_id NULL FK — though sprints table doesn't exist yet, leave the column nullable with no FK constraint; document that the FK lands when `sprints` table arrives).
+  - [ ] `apps/web/server/repos/backlogItemRepo.ts` with `list({board_id, owner_id})`, `get(id, owner_id)`, `create`, `update`, `delete`, `bulkMarkInPlanning(ids[])`.
+  - [ ] Routes mounted at `apps/web/server/routes/backlogItems.ts` and registered in the main router. Endpoints: `GET /api/backlog-items?board_id=`, `POST /api/backlog-items`, `PATCH /api/backlog-items/:id`, `DELETE /api/backlog-items/:id`, `POST /api/backlog-items/bulk-mark-in-planning`.
+  - [ ] All endpoints owner-scoped and auth-gated (user session OR `agent:worker`/`agent:leader` JWT — same model as tasks). Machine tokens may read but not write (mirrors task creation rule).
+  - [ ] Vitest coverage in `tests/backlogItems.test.ts` — happy path + auth deny + cycle prevention not applicable (no FK to self).
+  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` clean.
+  - [ ] Bandit PASS.
+- [ ] **S16-T2 (backlog tab UI):**
+  - [ ] DESIGN.md read first; visual decisions match the existing kanban aesthetic (font, color, spacing).
+  - [ ] New route `/boards/:id/backlog` rendered via existing router; tab linked from board view header next to Tracks.
+  - [ ] Priority-grouped list (P0 → P3) with multi-select checkboxes per item.
+  - [ ] Create/edit/delete affordances visible **only** for items with `status = idea` (mirrors the locked-once-claimed rule from CLAUDE.md UI principles).
+  - [ ] **Create plan** button bulk-marks selected items to `in_planning` via `POST /api/backlog-items/bulk-mark-in-planning`, builds the prompt from `north-star.md § Planning Trigger Flow` step 3, and copies it to the clipboard. File-write delivery is deferred.
+  - [ ] Playwright E2E spec covering: add backlog item, edit, delete, multi-select + Create plan triggers status transition + clipboard write.
+  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` clean.
+  - [ ] Bandit PASS.
+- [ ] **S16-T3 (daemon spawn-at-create):**
+  - [ ] After successful board create, if the user has at least one registered machine, show a non-blocking modal: "Start the daemon now?" with a Start button.
+  - [ ] On Start, the UI displays the exact `ak start --board <id>` command and a one-click "copy to clipboard" affordance. (No browser-side spawning of local processes — that's not possible from a Worker-served SPA. The copy-and-paste handoff fulfills the S13-T4 TODO without crossing the browser↔OS boundary.)
+  - [ ] If the user has zero registered machines, the modal links to Settings → Daemon connection (the S13-T3 location) instead of to start.
+  - [ ] Vitest coverage in `tests/createBoardDaemonHandoff.test.tsx` — both branches (has machine / no machine).
+  - [ ] Playwright E2E spec adds a step to existing create-board flow.
+  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` clean.
+  - [ ] Bandit PASS.
+- [ ] **S16-S1 (env hygiene, stretch):**
+  - [ ] If shipped: lefthook prepare fix verified by `pnpm install --frozen-lockfile` clean run; `json_query` redaction extended to filter `refresh_token` and `x-api-key`.
+  - [ ] If not shipped: explicitly noted in close-sprint commentary.
+
+### Circuit-Breaker Risk
+
+**MEDIUM.** T1 introduces a new table — additive, but it's the first schema change since S8 and the migration must apply cleanly to the live `.wrangler/state` DB on dev-server restart. Mitigation: schema reviewed against `north-star.md` and approved by Tim; migration is purely additive (new table, no alters); CLAUDE.md "Migration restart" rule in DoD applies.
+
+T2 has the highest risk of scope drift — Backlog UI is greenfield and DESIGN.md compliance is non-trivial. Mitigation: DESIGN.md is the first read in the T2 bridge; any deviation surfaces in Bandit review. Clipboard-only delivery (no file write) keeps T2 scope tight.
+
+T3 is the lowest risk — UI + clipboard handoff, no daemon internal changes.
+
+### Board Task Creation
+
+**Tim creates four S16 board tasks manually in the browser** (S16-T1, S16-T2, S16-T3, S16-S1) before Skylar begins. Per AGENTIC.md §5, machine tokens cannot create tasks. Title format: `T<N>: <track short description>`. Status: `todo`. The S16-S1 board task can be created with status `todo` and pulled in only if capacity allows.
+
+### Migration Safety + Security Review
+
+- **T1:** Reversible (additive migration; rollback = drop table). Schema sign-off granted by Tim 2026-05-23. No auth/payments surface — endpoints reuse existing owner-scoped auth middleware.
+- **T2:** Reversible (UI only, no schema changes). No auth/payments/schema surface.
+- **T3:** Reversible (UI + CLI handoff, no schema changes). No auth/payments surface.
+- **S16-S1:** Reversible if shipped. No auth/payments/schema surface.
+
+---
+
+## Previous Sprint: Sprint 15 — Agent OS Remediation (OPEN 2026-05-23)
 
 ### Objective
 

@@ -1,16 +1,27 @@
 # Agent Kanban — Active Tracks
 
-## Current Sprint: Sprint 15 — Agent OS Remediation (OPEN 2026-05-23)
+## Current Sprint: Sprint 16 — Backlog Tab + Daemon Spawn-at-Create (OPEN 2026-05-23)
+
+| Track  | Goal                                                                                                                                                                                                          | Type            | Owner             | Status        |
+|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|-------------------|---------------|
+| S16-T1 | Backlog data model + repo + API — additive `backlog_items` migration (per `north-star.md § Data Model`), `backlogItemRepo.ts`, REST endpoints under `/api/backlog-items` (list, create, update, delete, bulk-mark-in-planning) | Code close-gate | Skylar (worktree) | Pending       |
+| S16-T2 | Backlog tab UI + planning trigger — new `/boards/:id/backlog` route, priority-grouped list, multi-select, **Create plan** clipboard handoff per `north-star.md § Planning Trigger Flow`. DESIGN.md compliance required | Code close-gate | Skylar (worktree) | Pending — depends on T1 API |
+| S16-T3 | Daemon spawn-at-create — board-create flow surfaces a "Start daemon now?" modal with a copy-to-clipboard `ak start --board <id>` handoff (or links to Settings → Daemon connection if no machine). Closes S13-T4 TODO | Code close-gate | Skylar (worktree) | Pending       |
+| S16-S1 | Env hygiene combo (stretch, deferred from S12-T4) — (a) lefthook `prepare` failure on `pnpm install --frozen-lockfile`, (b) `json_query` redaction extension (`refresh_token`, `x-api-key`)                  | Stretch         | Skylar (capacity) | Stretch — no bridge |
+
+See `docs/context/plan.md § Current Sprint: Sprint 16` for objective, dependencies, DoD, circuit-breaker risk, migration safety, and security review.
+
+**Board tasks:** Tim creates S16-T1/T2/T3/S1 manually in the browser before Skylar begins. Bridges live in `docs/context/handoffs/s16-t01-bridge.md`, `s16-t02-bridge.md`, `s16-t03-bridge.md`. S16-S1 has no bridge (stretch).
+
+---
+
+## Archive: Sprint 15 — Agent OS Remediation (CLOSED 2026-05-23)
 
 | Track  | Goal                                                                                                                                                                                                                                                                                                          | Type            | Owner                | Status        |
 |--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|----------------------|---------------|
 | S15-T1 | agent-kanban config fixes — install canonical skills (`open-sprint`, `report-track-status`, `minify-context`); rewire CLAUDE.md auto-triggers; create `docs/context/product.md`; correct AGENTIC.md §5 board task auth/endpoint; normalize `bandit.md` model to `sonnet`                                       | Code close-gate | Skylar                | DONE — Bandit PASS, merged 2026-05-23 |
 | S15-T2 | plan.md context migration — archive S1–S13 to `docs/context/archive/plan-archive-s1-s13.md`, archive S14 to `docs/context/archive/plan-s14-diagnostic.md`, leave `plan.md` with current sprint only; create `docs/context/handoffs/` for current/future bridges; update `peaches.md` init to reference archive | Code close-gate | Skylar (worktree)     | DONE — Bandit PASS, merged 2026-05-23 |
 | S15-T3 | Agent OS upstream issue report — clean external-facing bug/improvement report at `docs/context/findings/s14-agent-os-upstream-report.md` covering 5 canonical-install gaps from findings §6                                                                                                                   | Paper           | Peaches (no Skylar)   | DONE — authored 2026-05-23 |
-
-See `docs/context/plan.md § Current Sprint: Sprint 15` for objective, dependencies, DoD, and circuit-breaker risk.
-
-**Board tasks:** Tim creates S15-T1/T2/T3 manually in the browser before Skylar begins (machine tokens cannot create tasks — this is one of the bugs T1 fixes).
 
 ---
 
@@ -29,18 +40,19 @@ See `docs/context/plan.md § Current Sprint: Sprint 15` for objective, dependenc
 
 ## Future Backlog
 
-### Carry-forward (deferred from Sprint 12+; some absorbed into S15)
+### Carry-forward (deferred from Sprint 12+; some absorbed into S15/S16)
 
 - **`/sprint-open` skill** (was S12-T3) — project-level skill mirroring `/close-sprint`. Symmetric gap surfaced when `/close-sprint` referenced it.
-- **Env hygiene combo** (was S12-T4) — (a) diagnose + fix `prepare: lefthook install` failure on `pnpm install --frozen-lockfile`; (b) extend `json_query` redaction filter (`refresh_token` + `x-api-key`).
+- ~~**Env hygiene combo** (was S12-T4)~~ — ABSORBED into S16-S1 (stretch).
 - **Twice-green proof for daemon smoke** (was S12-T5; was S11 carry-forward) — first real operator run; verification, not code.
 - **FATAL stderr/stdout consistency** in `scripts/daemon-smoke-test.sh` (was S12-T6) — pre-existing inconsistency at lines 148, 395, 400, 409, 424, 543.
 - **Peaches task-refinement workflow scoping** (was S12-T7; longstanding board task `d5kv1hfw1d2v`) — design-only doc.
 - **team_members Phase 2** — `attributed_team_member_id` columns on `task_actions`/`messages`/`tasks`; `ak team sync` CLI command; richer chat-with-team-member UX. Gated by S12-T2 Phase 1 landing (complete).
 - **Claude Code subagent loader gap** — separate from team_members work. The fact that Peaches/Skylar/Bandit don't register as `subagent_type` on this fork is its own concern; team_members entity does NOT fix the loader. Likely consumed by S14 diagnostic.
-- **Daemon spawn-at-create** — new track that lands the daemon-onboarding flow on board creation (S13-T4 leaves a TODO; this track fulfills it).
+- ~~**Daemon spawn-at-create**~~ — ABSORBED into S16-T3.
 - **Login/SSO entry point** — deferred from S13-T3 per Tim's locked decision.
 - **Labels global promotion** — deferred from S13-T3 per Tim's locked decision 2026-05-22 (T3 ships a Settings → Labels stub only). Schema migration moving labels from `boards.labels` to a dedicated `labels` table with `owner_id`, rewrite of all label CRUD endpoints, and consumer updates. Real refactor; track scope unto itself.
+- **Sprint entity (`sprints` table) + `agent_definitions` sync** — deferred from S16. The full north-star core loop needs sprint as a first-class entity (`sprints` table, `tasks.sprint_id`, `tasks.track_number`, `agent_definitions` table + `ak agent sync`). S16 lands the backlog half only; the sprint half is a future track.
 
 ### Longstanding
 
@@ -48,7 +60,7 @@ See `docs/context/plan.md § Current Sprint: Sprint 15` for objective, dependenc
 
 ---
 
-*Last updated: 2026-05-23 (Sprint 14 CLOSED — diagnostic delivered as `docs/context/findings/s14-agent-os-diagnostic.md`. Sprint 15 OPENED — Agent OS Remediation, three tracks: T1 config fixes, T2 plan.md migration, T3 upstream report. T2 is irreversible — Tim approval required before Skylar begins.)*
+*Last updated: 2026-05-23 (Sprint 15 CLOSED — three tracks DONE. Sprint 16 OPENED — Backlog Tab + Daemon Spawn-at-Create. Three code tracks (T1 backlog data + API, T2 backlog UI, T3 daemon spawn-at-create) + one stretch (S1 env hygiene). Schema sign-off granted for T1 additive `backlog_items` table. Worktrees required for all three code tracks.)*
 
 ---
 
