@@ -1,41 +1,30 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AddMachineSteps } from "../components/AddMachineSteps";
 import { Header } from "../components/Header";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 import { useCreateBoard } from "../hooks/useBoard";
 import { api } from "../lib/api";
-import { authClient } from "../lib/auth-client";
 
 export function NewBoardPage() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(0);
   const [boardName, setBoardName] = useState("My Board");
   const [boardTheme, setBoardTheme] = useState("");
-  const [apiKeyDisplay, setApiKeyDisplay] = useState("");
-  const [apiKeyId, setApiKeyId] = useState("");
   const [error, setError] = useState("");
   const createBoard = useCreateBoard();
 
   async function handleCreateBoard() {
     setError("");
-    await createBoard.mutateAsync({ name: boardName, type: "dev", theme: boardTheme || undefined });
-
-    const { data, error: keyError } = await authClient.apiKey.create({ name: "onboarding" });
-    if (keyError || !data?.key) {
-      setError("Failed to create API key. You can create one later from Machines page.");
-      return;
+    try {
+      const { next_number } = await api.sprints.getNextNumber();
+      const prefixedName = `S${next_number}-${boardName.trim()}`;
+      const board = await createBoard.mutateAsync({ name: prefixedName, type: "dev", theme: boardTheme || undefined });
+      navigate(`/boards/${board.id}`, { replace: true });
+      // TODO(future-track): daemon spawn-at-create flow lands separately
+    } catch {
+      setError("Failed to create board. Please try again.");
     }
-    setApiKeyDisplay(data.key);
-    setApiKeyId(data.id);
-    setStep(1);
-  }
-
-  async function handleDone() {
-    const boards = await api.boards.list();
-    if (boards.length > 0) navigate(`/boards/${boards[0].id}`, { replace: true });
   }
 
   return (
@@ -50,31 +39,21 @@ export function NewBoardPage() {
             <p className="text-sm text-content-secondary mt-2">Your AI workforce starts here.</p>
           </div>
 
-          <div className="flex justify-center gap-2">
-            {[0, 1].map((s) => (
-              <div key={s} className={`w-2 h-2 rounded-full ${s <= step ? "bg-accent" : "bg-surface-tertiary"}`} />
-            ))}
+          <div className="space-y-4">
+            <label className="block text-xs font-medium text-content-tertiary uppercase tracking-wide">Sprint board name</label>
+            <Input value={boardName} onChange={(e) => setBoardName(e.target.value)} />
+            <label className="block text-xs font-medium text-content-tertiary uppercase tracking-wide">Sprint theme</label>
+            <Textarea
+              value={boardTheme}
+              onChange={(e) => setBoardTheme(e.target.value)}
+              placeholder="Describe the purpose of this sprint."
+              rows={3}
+            />
+            {error && <p className="text-xs text-red-400">{error}</p>}
+            <Button onClick={handleCreateBoard} disabled={createBoard.isPending || !boardName.trim()} className="w-full">
+              {createBoard.isPending ? "Creating..." : "Create Board"}
+            </Button>
           </div>
-
-          {step === 0 && (
-            <div className="space-y-4">
-              <label className="block text-xs font-medium text-content-tertiary uppercase tracking-wide">Board name</label>
-              <Input value={boardName} onChange={(e) => setBoardName(e.target.value)} />
-              <label className="block text-xs font-medium text-content-tertiary uppercase tracking-wide">Theme</label>
-              <Textarea
-                value={boardTheme}
-                onChange={(e) => setBoardTheme(e.target.value)}
-                placeholder="Describe the purpose of this sprint."
-                rows={3}
-              />
-              {error && <p className="text-xs text-red-400">{error}</p>}
-              <Button onClick={handleCreateBoard} disabled={createBoard.isPending || !boardName.trim()} className="w-full">
-                {createBoard.isPending ? "Creating..." : "Create Board"}
-              </Button>
-            </div>
-          )}
-
-          {step === 1 && apiKeyDisplay && apiKeyId && <AddMachineSteps apiKey={apiKeyDisplay} apiKeyId={apiKeyId} onDone={handleDone} />}
         </div>
       </div>
     </div>

@@ -78,6 +78,7 @@ import {
   assertSprintOwner,
   createSprint,
   getActiveSprint,
+  getNextSprintNumber,
   getSprint,
   listSprintsByBoard,
   transitionSprint,
@@ -1272,6 +1273,12 @@ api.get("/api/boards/:id/sprints/active", async (c) => {
   const sprint = await getActiveSprint(c.env.DB, boardId);
   if (!sprint) throw new HTTPException(404, { message: "No active sprint" });
   return c.json(sprint);
+});
+
+api.get("/api/sprints/next-number", async (c) => {
+  const ownerId = c.get("ownerId");
+  const nextNumber = await getNextSprintNumber(c.env.DB, ownerId);
+  return c.json({ next_number: nextNumber });
 });
 
 api.get("/api/sprints/:id", async (c) => {
