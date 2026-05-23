@@ -1,7 +1,6 @@
 import type { TeamMember } from "@agent-kanban/shared";
 import { Compass, type LucideIcon, Shield, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
-import { cn } from "../lib/utils";
 
 const ROLE_GLYPHS: Record<string, { icon: LucideIcon; label: string }> = {
   architect: { icon: Compass, label: "Architect" },
@@ -23,7 +22,7 @@ export function TeamCard({ member }: { member: TeamMember }) {
   const glyph = ROLE_GLYPHS[role];
   const RoleIcon = glyph?.icon;
   const initials = initialsFor(member);
-  const handoffTargets = member.handoff_to ?? [];
+  const displayName = member.display_name?.trim() || member.name;
 
   return (
     <Link
@@ -33,7 +32,7 @@ export function TeamCard({ member }: { member: TeamMember }) {
       {/* Muted accent stripe — signals "no key" vs the colored stripe on AgentCard */}
       <div className="h-[3px] bg-accent/30" />
 
-      <div className="flex flex-col items-center px-5 pb-4 pt-7 text-center">
+      <div className="flex flex-col items-center px-5 pb-5 pt-7 text-center">
         <div className="relative">
           <span
             aria-hidden
@@ -52,7 +51,7 @@ export function TeamCard({ member }: { member: TeamMember }) {
         </div>
 
         <div className="mt-3 flex max-w-full items-center gap-1.5">
-          <h2 className="truncate font-mono text-base font-bold text-content-primary">{member.name}</h2>
+          <h2 className="truncate font-mono text-base font-bold text-content-primary">{displayName}</h2>
           {member.builtin ? (
             <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[9px] text-content-tertiary">built-in</span>
           ) : null}
@@ -65,26 +64,6 @@ export function TeamCard({ member }: { member: TeamMember }) {
             <span className="max-w-full truncate rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-content-tertiary">{role}</span>
           </div>
         )}
-
-        {/* Team pill — replaces the fingerprint chip on AgentCard */}
-        <div className="mt-4 flex h-5 max-w-full items-center justify-center">
-          <span
-            className={cn(
-              "inline-flex max-w-full items-center gap-1.5 rounded-full border border-accent/40 bg-surface-primary/60 px-2 py-0.5",
-              "font-mono text-[10px] tracking-[0.12em] text-content-tertiary",
-            )}
-          >
-            team
-          </span>
-        </div>
-
-        {member.description && <p className="mt-3 line-clamp-2 text-xs leading-5 text-content-secondary">{member.description}</p>}
-      </div>
-
-      {/* Footer — handoff_to edges instead of token/cost stats */}
-      <div className="flex items-center justify-between gap-2 border-t border-border/60 px-4 py-3 font-mono text-[10px] text-content-tertiary">
-        <span className="truncate">{handoffTargets.length > 0 ? `→ ${handoffTargets.join(", ")}` : "no handoff"}</span>
-        <span className="shrink-0">{member.capabilities?.length ?? 0} caps</span>
       </div>
     </Link>
   );

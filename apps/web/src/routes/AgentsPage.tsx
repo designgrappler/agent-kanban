@@ -1,42 +1,10 @@
-import { type AgentRuntime, type AgentWithActivity, RUNTIME_LABELS, type Subagent } from "@agent-kanban/shared";
-import { Bot, Code2, Github, type LucideIcon, Sparkles, Terminal } from "lucide-react";
 import { Link } from "react-router-dom";
-import { AgentIdenticon } from "../components/AgentIdenticon";
 import { Header } from "../components/Header";
-import { formatRelative } from "../components/TaskDetailFields";
 import { TeamCard } from "../components/TeamCard";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { useAgents, useSubagents } from "../hooks/useAgents";
 import { useTeamMembers } from "../hooks/useTeamMembers";
-import { agentColor, agentColorRgb, agentFingerprint } from "../lib/agentIdentity";
-import { cn } from "../lib/utils";
-
-const runtimeMeta: Record<AgentRuntime, { icon: LucideIcon; tone: string }> = {
-  claude: { icon: Bot, tone: "text-content-secondary" },
-  codex: { icon: Terminal, tone: "text-accent" },
-  gemini: { icon: Sparkles, tone: "text-warning" },
-  copilot: { icon: Github, tone: "text-success" },
-  hermes: { icon: Code2, tone: "text-content-tertiary" },
-};
-
-function formatTokens(n: number): string {
-  if (!n) return "0";
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
-
-function formatCost(microUsd: number): string {
-  if (!microUsd) return "$0.00";
-  return `$${(microUsd / 1_000_000).toFixed(2)}`;
-}
 
 export function AgentsPage() {
-  const { agents, loading: agentsLoading } = useAgents();
-  const { subagents, loading: subagentsLoading } = useSubagents();
   const { teamMembers, loading: teamLoading } = useTeamMembers();
-  const latestAgents = (agents as AgentWithActivity[]).filter((agent) => agent.version === "latest");
-  const online = latestAgents.filter((agent) => agent.status === "online").length;
 
   return (
     <div className="min-h-screen bg-surface-primary">
@@ -44,99 +12,41 @@ export function AgentsPage() {
       <div className="mx-auto max-w-6xl px-6 py-8 sm:px-8 sm:py-10">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold text-content-primary">Agents</h1>
+            <h1 className="text-2xl font-bold text-content-primary">Team members</h1>
             <div className="flex flex-wrap items-center gap-3 font-mono text-xs text-content-tertiary">
-              <span>
-                {online}/{latestAgents.length} online
-              </span>
               <span>{teamMembers.length} team</span>
-              <span>{subagents.length} sub-agents</span>
             </div>
           </div>
-          <Link
-            to="/agents/new"
-            className="inline-flex h-8 items-center rounded-md bg-accent px-3.5 text-sm font-medium text-surface-primary transition-opacity hover:opacity-90"
-          >
-            New agent
-          </Link>
         </div>
 
-        <Tabs defaultValue="agents" className="gap-5">
-          <TabsList variant="line" aria-label="Agent lists" className="border-b border-border">
-            <TabsTrigger value="agents" className="px-3 font-mono text-xs">
-              Agents
-              <span className="text-content-tertiary">{latestAgents.length}</span>
-            </TabsTrigger>
-            <TabsTrigger value="subagents" className="px-3 font-mono text-xs">
-              Sub-agents
-              <span className="text-content-tertiary">{subagents.length}</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="agents" className="space-y-8">
-            <section aria-labelledby="team-section-heading" className="space-y-3">
-              <div className="flex items-baseline justify-between">
-                <h2 id="team-section-heading" className="font-mono text-xs uppercase tracking-[0.18em] text-content-tertiary">
-                  Team <span className="ml-1 text-content-tertiary/70">{teamMembers.length}</span>
-                </h2>
-              </div>
-              {teamLoading ? (
-                <AgentGridSkeleton />
-              ) : teamMembers.length === 0 ? (
-                <EmptyState label="No team members yet." />
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {teamMembers.map((member) => (
-                    <TeamCard key={member.id} member={member} />
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section aria-labelledby="workers-section-heading" className="space-y-3">
-              <div className="flex items-baseline justify-between">
-                <h2 id="workers-section-heading" className="font-mono text-xs uppercase tracking-[0.18em] text-content-tertiary">
-                  Workers <span className="ml-1 text-content-tertiary/70">{latestAgents.length}</span>
-                </h2>
-              </div>
-              {agentsLoading ? (
-                <AgentGridSkeleton />
-              ) : latestAgents.length === 0 ? (
-                <EmptyState label="No latest agents yet." action="Create your first agent" href="/agents/new" />
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {latestAgents.map((agent) => (
-                    <AgentCard key={agent.id} agent={agent} />
-                  ))}
-                </div>
-              )}
-            </section>
-          </TabsContent>
-
-          <TabsContent value="subagents">
-            {subagentsLoading ? (
-              <AgentGridSkeleton />
-            ) : subagents.length === 0 ? (
-              <EmptyState label="No sub-agents registered." />
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {(subagents as Subagent[]).map((subagent) => (
-                  <SubagentCard key={subagent.id} subagent={subagent} />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+        <section aria-labelledby="team-section-heading" className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <h2 id="team-section-heading" className="font-mono text-xs uppercase tracking-[0.18em] text-content-tertiary">
+              Team <span className="ml-1 text-content-tertiary/70">{teamMembers.length}</span>
+            </h2>
+          </div>
+          {teamLoading ? (
+            <TeamGridSkeleton />
+          ) : teamMembers.length === 0 ? (
+            <EmptyState label="No team members yet." />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {teamMembers.map((member) => (
+                <TeamCard key={member.id} member={member} />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
 }
 
-function AgentGridSkeleton() {
+function TeamGridSkeleton() {
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="h-56 animate-pulse rounded-lg border border-border bg-surface-secondary" />
+        <div key={i} className="h-32 animate-pulse rounded-lg border border-border bg-surface-secondary" />
       ))}
     </div>
   );
@@ -152,147 +62,5 @@ function EmptyState({ label, action, href }: { label: string; action?: string; h
         </Link>
       )}
     </div>
-  );
-}
-
-function RuntimeMeta({ runtime, model, available }: { runtime: AgentRuntime; model: string | null; available?: boolean }) {
-  const meta = runtimeMeta[runtime];
-  const Icon = meta.icon;
-
-  return (
-    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-surface-primary/70 px-2.5 py-1 font-mono text-[10px] text-content-tertiary">
-      <Icon className={cn("size-3 shrink-0", meta.tone)} />
-      <span className="shrink-0 text-content-primary">{RUNTIME_LABELS[runtime]}</span>
-      <span className="text-content-tertiary/70">·</span>
-      <span className="truncate">{model || "default"}</span>
-      {available !== undefined && (
-        <span
-          title={available ? "Runtime available" : "Runtime unavailable"}
-          className={cn("ml-0.5 size-1.5 shrink-0 rounded-full", available ? "bg-success" : "bg-warning")}
-        />
-      )}
-    </span>
-  );
-}
-
-function RuntimeChip({ runtime, model }: { runtime: AgentRuntime; model: string }) {
-  const meta = runtimeMeta[runtime];
-  const Icon = meta.icon;
-
-  return (
-    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-surface-primary/70 px-2 py-0.5 font-mono text-[10px] text-content-tertiary">
-      <Icon className={cn("size-3 shrink-0", meta.tone)} />
-      <span className="shrink-0 text-content-secondary">{RUNTIME_LABELS[runtime]}</span>
-      <span className="truncate">{model}</span>
-    </span>
-  );
-}
-
-function AgentCard({ agent }: { agent: AgentWithActivity }) {
-  const isOnline = agent.status === "online";
-  const color = agent.public_key ? agentColor(agent.public_key) : "#22D3EE";
-  const rgb = agent.public_key ? agentColorRgb(agent.public_key) : "34, 211, 238";
-  const fp = agent.fingerprint ? agentFingerprint(agent.fingerprint) : "";
-  const tokenCount = (agent.input_tokens || 0) + (agent.output_tokens || 0);
-
-  return (
-    <Link
-      to={`/agents/${agent.id}`}
-      className="group relative block overflow-hidden rounded-lg border border-border bg-surface-secondary transition-all hover:-translate-y-px hover:border-accent/35"
-      style={{
-        boxShadow: isOnline ? `0 4px 20px rgba(${rgb}, 0.12)` : undefined,
-      }}
-    >
-      <div className="h-[3px]" style={{ background: color }} />
-      <div
-        title={agent.last_active_at ? `Last active ${formatRelative(agent.last_active_at)}` : undefined}
-        className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-primary/80 px-2 py-0.5"
-      >
-        <span className={cn("size-1.5 rounded-full", isOnline ? "bg-success" : "bg-content-tertiary")} />
-        <span className="font-mono text-[10px] text-content-tertiary">{isOnline ? "Online" : "Offline"}</span>
-      </div>
-
-      <div className="flex flex-col items-center px-5 pb-4 pt-7 text-center">
-        <AgentIdenticon publicKey={agent.public_key} size={60} glow={isOnline} leader={agent.kind === "leader"} />
-
-        <div className="mt-3 flex max-w-full items-center gap-1.5">
-          <h2 className="truncate font-mono text-base font-bold text-content-primary">{agent.name}</h2>
-          {agent.builtin ? (
-            <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[9px] text-content-tertiary">built-in</span>
-          ) : null}
-        </div>
-
-        <span className="mt-0.5 max-w-full truncate font-mono text-[10px] text-content-tertiary">@{agent.username}</span>
-
-        {agent.role && (
-          <div className="mt-2 flex max-w-full flex-wrap justify-center gap-1.5">
-            {agent.role && (
-              <span className="max-w-full truncate rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-content-tertiary">
-                {agent.role}
-              </span>
-            )}
-          </div>
-        )}
-
-        <div className="mt-4 flex h-5 max-w-full items-center justify-center">
-          {fp && (
-            <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-surface-primary/60 px-2 py-0.5">
-              <span className="size-1 rounded-full" style={{ backgroundColor: color }} />
-              <span className="truncate font-mono text-[10px] tracking-[0.12em] text-content-tertiary">{fp}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="mt-2 flex max-w-full justify-center">
-          <RuntimeMeta runtime={agent.runtime} model={agent.model} available={agent.runtime_available} />
-        </div>
-      </div>
-      <div className="flex items-center justify-between gap-2 border-t border-border/60 px-4 py-3 font-mono text-[10px] text-content-tertiary">
-        <span>{agent.active_task_count || 0} active</span>
-        <span>{agent.queued_task_count || 0} queued</span>
-        <span>{formatTokens(tokenCount)} tok</span>
-        <span>{formatCost(agent.cost_micro_usd)}</span>
-      </div>
-    </Link>
-  );
-}
-
-function SubagentCard({ subagent }: { subagent: Subagent }) {
-  const models = Object.entries(subagent.models ?? {}) as [AgentRuntime, string][];
-
-  return (
-    <article className="overflow-hidden rounded-lg border border-border bg-surface-secondary">
-      <div className="h-[3px] bg-accent/40" />
-      <div className="flex flex-col items-center px-5 pb-4 pt-5 text-center">
-        <span className="flex size-[60px] shrink-0 items-center justify-center rounded-lg border border-border bg-surface-primary">
-          <Bot className="size-6 text-content-secondary" />
-        </span>
-
-        <h2 className="mt-3 max-w-full truncate font-mono text-base font-bold text-content-primary">{subagent.name}</h2>
-        <div className="mt-0.5 max-w-full truncate font-mono text-[10px] text-content-tertiary">@{subagent.username}</div>
-
-        <div className="mt-2 flex max-w-full flex-wrap justify-center gap-1.5">
-          <span className="rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-content-secondary">sub-agent</span>
-          {subagent.role && (
-            <span className="max-w-full truncate rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-content-tertiary">
-              {subagent.role}
-            </span>
-          )}
-        </div>
-
-        {subagent.bio && <p className="mt-3 line-clamp-2 text-xs leading-5 text-content-secondary">{subagent.bio}</p>}
-
-        <div className="mt-3 flex max-w-full flex-wrap justify-center gap-1.5">
-          {models.length > 0 ? (
-            models.map(([runtime, model]) => <RuntimeChip key={runtime} runtime={runtime} model={model} />)
-          ) : (
-            <span className="font-mono text-[10px] text-content-tertiary">No models configured</span>
-          )}
-        </div>
-      </div>
-      <div className="border-t border-border/60 px-4 py-3 text-center font-mono text-[10px] text-content-tertiary">
-        {(subagent.skills?.length ?? 0) > 0 ? `${subagent.skills!.length} skills` : "No skills"}
-      </div>
-    </article>
   );
 }

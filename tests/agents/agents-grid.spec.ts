@@ -1,30 +1,31 @@
 // spec: specs/agent-kanban.plan.md
-// section: 7.2 Agents page renders agent cards in a grid
+// section: 7.2 Team members page renders member cards in a grid
+// NOTE: S13-T1 replaced the Workers section (AgentCards) with a Team section (TeamCards).
+// Built-in team members (Peaches, Skylar, Bandit) are seeded on every new account.
+// TeamCard shows display_name ("peaches"), username ("@peaches"), and role badge.
 
 import { expect, test } from "@playwright/test";
 import { signUpAndGetBoard } from "../helpers/auth";
 
 test.describe("Agents Page", () => {
-  test("Agents page renders agent cards in a grid", async ({ page }) => {
-    // 1. Sign in as a user with at least one agent and navigate to /agents
+  test("Team members page renders team member cards in a grid", async ({ page }) => {
+    // 1. Sign in as a new user and navigate to /agents
     await signUpAndGetBoard(page, `agents_grid_${Date.now()}@example.com`);
     await page.goto("/agents");
 
-    // Wait for the agent card grid to load
-    await page.getByText("Quality Goalkeeper").first().waitFor({ state: "visible" });
+    // Wait for the built-in "peaches" team card to load
+    await page.getByText("peaches").first().waitFor({ state: "visible" });
 
-    // expect: Agents are displayed in a 3-column card grid
-    const agentCard = page.getByRole("link", { name: /Quality Goalkeeper/ });
-    await expect(agentCard).toBeVisible();
+    // expect: Team member cards are displayed in a grid layout
+    // TeamCard is a link element whose accessible name comes from the card content
+    const teamCard = page.getByRole("link", { name: /peaches/ }).first();
+    await expect(teamCard).toBeVisible();
 
-    // expect: Each card shows the agent identicon (img), agent name, fingerprint badge, status indicator
-    await expect(agentCard.getByRole("heading", { name: "Quality Goalkeeper" })).toBeVisible();
-    await expect(agentCard.getByText(/Offline|Online/)).toBeVisible();
+    // expect: Each card shows the member's display name and username
+    await expect(teamCard.getByText("peaches").first()).toBeVisible();
+    await expect(teamCard.getByText(/@peaches/)).toBeVisible();
 
-    // expect: Stats strip with active/queued task counts, token count, and cost
-    await expect(agentCard.getByText(/active/)).toBeVisible();
-    await expect(agentCard.getByText(/queued/)).toBeVisible();
-    await expect(agentCard.getByText(/tok/)).toBeVisible();
-    await expect(agentCard.getByText(/\$/)).toBeVisible();
+    // expect: Role badge is shown (architect role for Peaches)
+    await expect(teamCard.getByText("architect")).toBeVisible();
   });
 });
