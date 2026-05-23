@@ -66,6 +66,10 @@ const ROUTE_RULES: { method: string; pattern: RegExp; rule: RouteRule }[] = [
   { method: "POST", pattern: /^\/api\/repositories$/, rule: { allow: ["user", "agent:leader"] } },
   { method: "DELETE", pattern: /^\/api\/repositories\/[^/]+$/, rule: { allow: ["user", "agent:leader"] } },
 
+  // Team members — user and leader only
+  { method: "POST", pattern: /^\/api\/team-members$/, rule: { allow: ["user", "agent:leader"] } },
+  { method: "POST", pattern: /^\/api\/team-members\/[^/]+\/avatar$/, rule: { allow: ["user", "agent:leader"] } },
+
   // Backlog items — user and leader
   { method: "POST", pattern: /^\/api\/boards\/[^/]+\/backlog-items$/, rule: { allow: ["user", "agent:leader"] } },
   { method: "PATCH", pattern: /^\/api\/backlog-items\/[^/]+$/, rule: { allow: ["user", "agent:leader"] } },
