@@ -35,6 +35,7 @@ import { AvatarValidationError, validateAvatarUpload, writeAvatarFile } from "./
 import {
   assertBacklogItemOwner,
   assertBoardOwnerForBacklog,
+  bulkMarkInPlanning,
   createBacklogItem,
   deleteBacklogItem,
   listBacklogItemsByBoard,
@@ -1414,9 +1415,25 @@ api.patch("/api/backlog-items/:id", async (c) => {
 api.delete("/api/backlog-items/:id", async (c) => {
   const ownerId = c.get("ownerId");
   const id = c.req.param("id");
-  await assertBacklogItemOwner(c.env.DB, id, ownerId);
+  const item = await assertBacklogItemOwner(c.env.DB, id, ownerId);
+  if (item.status !== "idea") {
+    throw new HTTPException(409, { message: "Cannot delete a backlog item that has been moved out of idea status." });
+  }
   await deleteBacklogItem(c.env.DB, id);
   return c.json({ ok: true });
+});
+
+api.post("/api/backlog-items/bulk-mark-in-planning", async (c) => {
+  const ownerId = c.get("ownerId");
+  const body = await c.req.json<{ ids?: unknown }>();
+
+  if (!Array.isArray(body.ids) || body.ids.some((id) => typeof id !== "string")) {
+    throw new HTTPException(400, { message: "ids must be an array of strings" });
+  }
+
+  const ids = body.ids as string[];
+  const items = await bulkMarkInPlanning(c.env.DB, ids, ownerId);
+  return c.json(items);
 });
 
 // ─── GPG Keys ───

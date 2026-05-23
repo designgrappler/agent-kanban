@@ -94,3 +94,39 @@ export async function assertBacklogItemOwner(db: D1, id: string, ownerId: string
   if (!row) throw new HTTPException(404, { message: "Backlog item not found" });
   return row;
 }
+
+export async function bulkMarkInPlanning(db: D1, ids: string[], ownerId: string): Promise<BacklogItem[]> {
+  if (ids.length === 0) return [];
+
+  const now = new Date().toISOString();
+
+  // Build placeholders for the IN clause
+  const placeholders = ids.map(() => "?").join(", ");
+
+  // Update only items owned by this user (via board join) and currently in 'idea' status
+  await db
+    .prepare(
+      `UPDATE backlog_items
+       SET status = 'in_planning', updated_at = ?
+       WHERE id IN (${placeholders})
+         AND status = 'idea'
+         AND board_id IN (SELECT id FROM boards WHERE owner_id = ?)`,
+    )
+    .bind(now, ...ids, ownerId)
+    .run();
+
+  // Return all items that are now in_planning and match the requested ids + owner
+  const result = await db
+    .prepare(
+      `SELECT bi.*
+       FROM backlog_items bi
+       JOIN boards b ON bi.board_id = b.id
+       WHERE bi.id IN (${placeholders})
+         AND b.owner_id = ?
+         AND bi.status = 'in_planning'`,
+    )
+    .bind(...ids, ownerId)
+    .all<BacklogItem>();
+
+  return result.results;
+}

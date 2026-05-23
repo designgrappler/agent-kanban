@@ -35,6 +35,7 @@ describe("backlog item routes", () => {
   let leaderAgentId: string;
   let leaderSessionId: string;
   let leaderSessionPrivateKey: CryptoKey;
+  let machineApiKey: string;
 
   async function signWorkerJWT(): Promise<string> {
     return new SignJWT({ sub: workerSessionId, aid: workerAgentId, jti: randomUUID(), aud: BETTER_AUTH_URL })
@@ -71,6 +72,7 @@ describe("backlog item routes", () => {
     // API key for the same user (machine identity) for setting up agents/sessions
     const apiKeyResult = await auth.api.createApiKey({ body: { userId: userOwnerId } });
     const apiKey = apiKeyResult.key;
+    machineApiKey = apiKey;
 
     // Register a machine — required before agent sessions can be created
     const machineRes = await apiRequest(
@@ -341,5 +343,97 @@ describe("backlog item routes", () => {
     const body = (await res.json()) as any;
     expect(body.error).toBeDefined();
     expect(typeof body.error.message).toBe("string");
+  });
+
+  // ─── Machine token denial ───
+
+  it("POST /api/boards/:id/backlog-items denies machine token with 403", async () => {
+    const res = await apiRequest("POST", `/api/boards/${boardId}/backlog-items`, { title: "x", priority: "P1" }, machineApiKey);
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as any;
+    expect(body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("PATCH /api/backlog-items/:id denies machine token with 403", async () => {
+    const created = await apiRequest("POST", `/api/boards/${boardId}/backlog-items`, { title: "machine-patch-target", priority: "P2" }, userToken);
+    const item = (await created.json()) as any;
+    const res = await apiRequest("PATCH", `/api/backlog-items/${item.id}`, { title: "renamed" }, machineApiKey);
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as any;
+    expect(body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("DELETE /api/backlog-items/:id denies machine token with 403", async () => {
+    const created = await apiRequest("POST", `/api/boards/${boardId}/backlog-items`, { title: "machine-delete-target", priority: "P3" }, userToken);
+    const item = (await created.json()) as any;
+    const res = await apiRequest("DELETE", `/api/backlog-items/${item.id}`, undefined, machineApiKey);
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as any;
+    expect(body.error.code).toBe("FORBIDDEN");
+  });
+
+  // ─── DELETE status guard ───
+
+  it("DELETE /api/backlog-items/:id returns 409 when item is not in idea status", async () => {
+    const created = await apiRequest("POST", `/api/boards/${boardId}/backlog-items`, { title: "no-delete-planning", priority: "P1" }, userToken);
+    const item = (await created.json()) as any;
+    // Move the item out of idea
+    await apiRequest("PATCH", `/api/backlog-items/${item.id}`, { status: "in_planning" }, userToken);
+    const res = await apiRequest("DELETE", `/api/backlog-items/${item.id}`, undefined, userToken);
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as any;
+    expect(body.error.message).toContain("idea status");
+  });
+
+  // ─── Bulk mark in planning ───
+
+  it("POST /api/backlog-items/bulk-mark-in-planning transitions multiple idea items", async () => {
+    const { createBoard } = await import("../apps/web/server/boardRepo");
+    const b = await createBoard(env.DB, userOwnerId, "Bulk Board", "ops");
+    const r1 = await apiRequest("POST", `/api/boards/${b.id}/backlog-items`, { title: "Bulk 1", priority: "P1" }, userToken);
+    const r2 = await apiRequest("POST", `/api/boards/${b.id}/backlog-items`, { title: "Bulk 2", priority: "P2" }, userToken);
+    const item1 = (await r1.json()) as any;
+    const item2 = (await r2.json()) as any;
+
+    const res = await apiRequest("POST", "/api/backlog-items/bulk-mark-in-planning", { ids: [item1.id, item2.id] }, userToken);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any[];
+    expect(body).toHaveLength(2);
+    expect(body.every((i: any) => i.status === "in_planning")).toBe(true);
+    const ids = body.map((i: any) => i.id).sort();
+    expect(ids).toEqual([item1.id, item2.id].sort());
+  });
+
+  it("POST /api/backlog-items/bulk-mark-in-planning is idempotent for already-in-planning items", async () => {
+    const { createBoard } = await import("../apps/web/server/boardRepo");
+    const b = await createBoard(env.DB, userOwnerId, "Bulk Idempotent Board", "ops");
+    const r1 = await apiRequest(
+      "POST",
+      `/api/boards/${b.id}/backlog-items`,
+      { title: "Idempotent", priority: "P0", status: "in_planning" },
+      userToken,
+    );
+    const item1 = (await r1.json()) as any;
+
+    // Call twice — should succeed both times
+    const res1 = await apiRequest("POST", "/api/backlog-items/bulk-mark-in-planning", { ids: [item1.id] }, userToken);
+    expect(res1.status).toBe(200);
+    const res2 = await apiRequest("POST", "/api/backlog-items/bulk-mark-in-planning", { ids: [item1.id] }, userToken);
+    expect(res2.status).toBe(200);
+    const body = (await res2.json()) as any[];
+    expect(body).toHaveLength(1);
+    expect(body[0].status).toBe("in_planning");
+  });
+
+  it("POST /api/backlog-items/bulk-mark-in-planning denies machine token with 403", async () => {
+    const res = await apiRequest("POST", "/api/backlog-items/bulk-mark-in-planning", { ids: [] }, machineApiKey);
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as any;
+    expect(body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("POST /api/backlog-items/bulk-mark-in-planning returns 400 for invalid ids", async () => {
+    const res = await apiRequest("POST", "/api/backlog-items/bulk-mark-in-planning", { ids: "not-an-array" }, userToken);
+    expect(res.status).toBe(400);
   });
 });

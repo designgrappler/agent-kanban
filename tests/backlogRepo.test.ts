@@ -174,4 +174,49 @@ describe("backlogRepo", () => {
     await env.DB.prepare("DELETE FROM boards WHERE id = ?").bind(board.id).run();
     expect(await getBacklogItem(env.DB, item.id)).toBeNull();
   });
+
+  it("bulkMarkInPlanning transitions idea items to in_planning", async () => {
+    const { bulkMarkInPlanning, createBacklogItem } = await import("../apps/web/server/backlogRepo");
+    const board = await makeBoard("backlog-test-user", "BR Bulk Board 1");
+    const a = await createBacklogItem(env.DB, board.id, { title: "Idea A", priority: "P1" }, "backlog-test-user");
+    const b = await createBacklogItem(env.DB, board.id, { title: "Idea B", priority: "P2" }, "backlog-test-user");
+    const updated = await bulkMarkInPlanning(env.DB, [a.id, b.id], "backlog-test-user");
+    expect(updated).toHaveLength(2);
+    expect(updated.every((i) => i.status === "in_planning")).toBe(true);
+    const ids = updated.map((i) => i.id).sort();
+    expect(ids).toEqual([a.id, b.id].sort());
+  });
+
+  it("bulkMarkInPlanning is idempotent — already in_planning items are included in result", async () => {
+    const { bulkMarkInPlanning, createBacklogItem } = await import("../apps/web/server/backlogRepo");
+    const board = await makeBoard("backlog-test-user", "BR Bulk Board 2");
+    const a = await createBacklogItem(env.DB, board.id, { title: "Already", priority: "P0", status: "in_planning" }, "backlog-test-user");
+    const b = await createBacklogItem(env.DB, board.id, { title: "New Idea", priority: "P3" }, "backlog-test-user");
+    const updated = await bulkMarkInPlanning(env.DB, [a.id, b.id], "backlog-test-user");
+    expect(updated).toHaveLength(2);
+    expect(updated.every((i) => i.status === "in_planning")).toBe(true);
+  });
+
+  it("bulkMarkInPlanning skips items not owned by ownerId", async () => {
+    const { bulkMarkInPlanning, createBacklogItem } = await import("../apps/web/server/backlogRepo");
+    const board = await makeBoard("backlog-test-user-2", "BR Bulk Board Other");
+    const item = await createBacklogItem(env.DB, board.id, { title: "Not mine", priority: "P1" }, "backlog-test-user-2");
+    const updated = await bulkMarkInPlanning(env.DB, [item.id], "backlog-test-user");
+    expect(updated).toHaveLength(0);
+  });
+
+  it("bulkMarkInPlanning skips items not in idea status", async () => {
+    const { bulkMarkInPlanning, createBacklogItem } = await import("../apps/web/server/backlogRepo");
+    const board = await makeBoard("backlog-test-user", "BR Bulk Board Skip");
+    const consumed = await createBacklogItem(env.DB, board.id, { title: "Consumed", priority: "P2" }, "backlog-test-user");
+    await env.DB.prepare("UPDATE backlog_items SET status = 'consumed' WHERE id = ?").bind(consumed.id).run();
+    const updated = await bulkMarkInPlanning(env.DB, [consumed.id], "backlog-test-user");
+    expect(updated).toHaveLength(0);
+  });
+
+  it("bulkMarkInPlanning returns empty array for empty ids input", async () => {
+    const { bulkMarkInPlanning } = await import("../apps/web/server/backlogRepo");
+    const updated = await bulkMarkInPlanning(env.DB, [], "backlog-test-user");
+    expect(updated).toEqual([]);
+  });
 });

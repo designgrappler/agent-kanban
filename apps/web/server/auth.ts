@@ -77,6 +77,7 @@ const ROUTE_RULES: { method: string; pattern: RegExp; rule: RouteRule }[] = [
   { method: "POST", pattern: /^\/api\/boards\/[^/]+\/backlog-items$/, rule: { allow: ["user", "agent:leader"] } },
   { method: "PATCH", pattern: /^\/api\/backlog-items\/[^/]+$/, rule: { allow: ["user", "agent:leader"] } },
   { method: "DELETE", pattern: /^\/api\/backlog-items\/[^/]+$/, rule: { allow: ["user", "agent:leader"] } },
+  { method: "POST", pattern: /^\/api\/backlog-items\/bulk-mark-in-planning$/, rule: { allow: ["user", "agent:leader"] } },
 
   // Sessions — machine reopen
   { method: "POST", pattern: /^\/api\/agents\/[^/]+\/sessions\/[^/]+\/reopen$/, rule: { allow: ["machine"] } },
