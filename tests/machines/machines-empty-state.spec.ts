@@ -11,7 +11,7 @@ test.describe("Machines Page", () => {
     await page.goto("/machines");
 
     // expect: Page heading 'Machines' is displayed
-    await expect(page.getByRole("heading", { name: "Machines", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Daemon connection", level: 1 })).toBeVisible();
 
     // expect: A count of '0 online' is shown
     await expect(page.getByText("0 online")).toBeVisible();

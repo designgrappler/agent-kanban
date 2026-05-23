@@ -43,6 +43,6 @@ test.describe("Settings Page", () => {
     await page.goto("/settings/daemon-connection");
 
     await expect(page.getByRole("heading", { name: "Daemon connection", level: 1 })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Add Machine" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add Machine" }).first()).toBeVisible();
   });
 });

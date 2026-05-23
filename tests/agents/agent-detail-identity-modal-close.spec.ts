@@ -1,35 +1,30 @@
 // spec: specs/agent-kanban.plan.md
-// section: 7.14 Agent detail — close identity modal
+// section: Team member detail page renders handoff targets
 
 import { expect, test } from "@playwright/test";
 import { signUpAndGetBoard } from "../helpers/auth";
 
-test.describe("Agents Page", () => {
-  test("Agent detail — close identity modal", async ({ page }) => {
-    // 1. Sign in, navigate to an agent detail page, open the identity modal
-    await signUpAndGetBoard(page, `agent_fp_close_${Date.now()}@example.com`);
+test.describe("Team Members — detail page", () => {
+  test("Team member detail page renders handoff targets", async ({ page }) => {
+    await signUpAndGetBoard(page, `team_handoff_${Date.now()}@example.com`);
     await page.goto("/agents");
 
-    await page.getByText("Quality Goalkeeper").first().waitFor({ state: "visible" });
-    await page.getByRole("link", { name: /Quality Goalkeeper/ }).click();
-    await expect(page).toHaveURL(/\/agents\/.+/);
+    await page
+      .getByRole("link", { name: /peaches/ })
+      .first()
+      .waitFor({ state: "visible" });
+    await page
+      .getByRole("link", { name: /peaches/ })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/team\/peaches/);
 
-    await page.getByText("← Agents").first().waitFor({ state: "visible" });
+    await page.getByRole("link", { name: "← Agents" }).waitFor({ state: "visible" });
 
-    // Open the identity modal
-    const fingerprintButton = page.getByRole("button", { name: /^[0-9a-f:]+$/ }).first();
-    await fingerprintButton.click();
+    // expect: Hands off to section is visible
+    await expect(page.getByText("Hands off to")).toBeVisible();
 
-    // expect: Identity modal is displayed
-    await expect(page.getByRole("heading", { name: "Cryptographic Identity" })).toBeVisible();
-
-    // 2. Click the close button in the modal header
-    await page.getByRole("button", { name: "Close" }).click();
-
-    // expect: The modal closes
-    await expect(page.getByRole("heading", { name: "Cryptographic Identity" })).not.toBeVisible();
-
-    // expect: The agent detail page is visible behind it
-    await expect(page.getByRole("heading", { name: "Quality Goalkeeper" })).toBeVisible();
+    // expect: Peaches hands off to skylar (exact to avoid matching soul pre block)
+    await expect(page.getByText("skylar", { exact: true })).toBeVisible();
   });
 });

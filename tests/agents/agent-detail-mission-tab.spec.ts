@@ -1,25 +1,27 @@
 // spec: specs/agent-kanban.plan.md
-// section: 7.15 Agent detail — Mission tab shows active task or 'No active mission'
+// section: Team member detail page shows description
 
 import { expect, test } from "@playwright/test";
 import { signUpAndGetBoard } from "../helpers/auth";
 
-test.describe("Agents Page", () => {
-  test("Agent detail — Mission tab shows 'No active mission'", async ({ page }) => {
-    // 1. Sign in and navigate to an agent that has no active task assigned
-    await signUpAndGetBoard(page, `agent_mission_${Date.now()}@example.com`);
+test.describe("Team Members — detail page", () => {
+  test("Team member detail page shows description", async ({ page }) => {
+    await signUpAndGetBoard(page, `team_desc_${Date.now()}@example.com`);
     await page.goto("/agents");
 
-    await page.getByText("Quality Goalkeeper").first().waitFor({ state: "visible" });
-    await page.getByRole("link", { name: /Quality Goalkeeper/ }).click();
-    await expect(page).toHaveURL(/\/agents\/.+/);
+    await page
+      .getByRole("link", { name: /skylar/ })
+      .first()
+      .waitFor({ state: "visible" });
+    await page
+      .getByRole("link", { name: /skylar/ })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/team\/skylar/);
 
-    await page.getByText("← Agents").first().waitFor({ state: "visible" });
+    await page.getByRole("link", { name: "← Agents" }).waitFor({ state: "visible" });
 
-    // Mission tab is active by default
-    await expect(page.getByRole("button", { name: "Mission" })).toBeVisible();
-
-    // expect: The Mission tab content shows 'No active mission.'
-    await expect(page.getByText("No active mission.")).toBeVisible();
+    // expect: Skylar's description is shown — scope to p to avoid matching soul pre block
+    await expect(page.locator("p", { hasText: "Full Stack Specialist" })).toBeVisible();
   });
 });

@@ -13,7 +13,7 @@ test.describe("Settings Page", () => {
     await expect(page.getByRole("heading", { name: "Board settings", level: 1 })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Settings", exact: true })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("tab", { name: "Labels", exact: true })).toBeVisible();
-    await expect(page.getByLabel("Name")).toHaveValue("My Board");
+    await expect(page.getByLabel("Name")).toHaveValue("S1-My Board");
     await expect(page.getByPlaceholder("What is this board for?")).toBeVisible();
     await page.getByLabel("Name").fill("Saved Board");
     await page.getByRole("button", { name: "Save" }).click();

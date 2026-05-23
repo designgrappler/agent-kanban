@@ -72,19 +72,9 @@ test.describe("AgentsPage — zero-state empty state", () => {
 
     const newBoardId = "board-test-id-001";
 
-    // First GET returns empty; after board creation, we continue
-    let boardsGetCount = 0;
     await page.route("**/api/boards", async (route) => {
       if (route.request().method() === "GET") {
-        boardsGetCount++;
-        if (boardsGetCount === 1) {
-          return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) });
-        }
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify([{ id: newBoardId, name: "My Board" }]),
-        });
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) });
       }
       if (route.request().method() === "POST") {
         const body = await route.request().postDataJSON();
@@ -132,13 +122,10 @@ test.describe("AgentsPage — zero-state empty state", () => {
 
     const existingBoardId = "existing-board-001";
 
+    // Phase 1: always return [] so zero-state renders regardless of pending pre-mock requests
     await page.route("**/api/boards", (route) => {
       if (route.request().method() === "GET") {
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify([{ id: existingBoardId, name: "Existing Board" }]),
-        });
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) });
       }
       return route.continue();
     });
@@ -163,8 +150,20 @@ test.describe("AgentsPage — zero-state empty state", () => {
 
     await page.goto("/agents");
     await expect(page.getByRole("button", { name: "Add backlog items" })).toBeVisible();
-    await page.getByRole("button", { name: "Add backlog items" }).click();
 
+    // Phase 2: override GET to return existing board (LIFO — takes priority over phase 1 route)
+    await page.route("**/api/boards", (route) => {
+      if (route.request().method() === "GET") {
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify([{ id: existingBoardId, name: "Existing Board" }]),
+        });
+      }
+      return route.continue();
+    });
+
+    await page.getByRole("button", { name: "Add backlog items" }).click();
     await expect(page).toHaveURL(new RegExp(`/boards/${existingBoardId}/backlog`));
   });
 

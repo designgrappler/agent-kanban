@@ -13,7 +13,7 @@ test.describe("Settings Page", () => {
     // expect: The board Name input shows the current board name
     const nameInput = page.getByLabel("Name");
     await expect(nameInput).toBeVisible();
-    await expect(nameInput).toHaveValue("My Board");
+    await expect(nameInput).toHaveValue("S1-My Board");
 
     // 2. Clear the Name input and type 'Renamed Board'
     // expect: A 'Save' button appears because changes are detected

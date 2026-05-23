@@ -31,6 +31,6 @@ test.describe("Header and Navigation", () => {
     await expect(page).toHaveURL(/\/repositories/);
 
     // expect: The Repositories page is displayed
-    await expect(page.getByText(/Repositories/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Repositories" })).toBeVisible();
   });
 });

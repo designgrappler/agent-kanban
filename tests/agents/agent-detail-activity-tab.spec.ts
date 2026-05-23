@@ -1,26 +1,30 @@
 // spec: specs/agent-kanban.plan.md
-// section: 7.16 Agent detail — Activity tab lists logs or empty state
+// section: Team member detail page renders soul section
 
 import { expect, test } from "@playwright/test";
 import { signUpAndGetBoard } from "../helpers/auth";
 
-test.describe("Agents Page", () => {
-  test("Agent detail — Activity tab lists logs or empty state", async ({ page }) => {
-    // 1. Sign in, navigate to an agent detail page, and click the 'Activity' tab
-    await signUpAndGetBoard(page, `agent_activity_${Date.now()}@example.com`);
+test.describe("Team Members — detail page", () => {
+  test("Team member detail page renders soul section", async ({ page }) => {
+    await signUpAndGetBoard(page, `team_soul_${Date.now()}@example.com`);
     await page.goto("/agents");
 
-    await page.getByText("Quality Goalkeeper").first().waitFor({ state: "visible" });
-    await page.getByRole("link", { name: /Quality Goalkeeper/ }).click();
-    await expect(page).toHaveURL(/\/agents\/.+/);
+    await page
+      .getByRole("link", { name: /peaches/ })
+      .first()
+      .waitFor({ state: "visible" });
+    await page
+      .getByRole("link", { name: /peaches/ })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/team\/peaches/);
 
-    await page.getByText("← Agents").first().waitFor({ state: "visible" });
+    await page.getByRole("link", { name: "← Agents" }).waitFor({ state: "visible" });
 
-    // Click the Activity tab
-    await page.getByRole("button", { name: "Activity" }).click();
+    // expect: Soul section heading is visible
+    await expect(page.getByText("Soul")).toBeVisible();
 
-    // expect: If no logs exist, the text 'No activity yet.' is displayed
-    // (For a fresh agent, there are no logs)
-    await expect(page.getByText("No activity yet.")).toBeVisible();
+    // expect: Soul pre block is visible (peaches' soul content)
+    await expect(page.locator("pre")).toBeVisible();
   });
 });
