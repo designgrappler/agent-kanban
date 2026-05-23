@@ -62,6 +62,9 @@ const ROUTE_RULES: { method: string; pattern: RegExp; rule: RouteRule }[] = [
   { method: "PATCH", pattern: /^\/api\/boards\/[^/]+$/, rule: { allow: ["user", "agent:leader"] } },
   { method: "DELETE", pattern: /^\/api\/boards\/[^/]+$/, rule: { allow: ["user", "agent:leader"] } },
 
+  // Sprints — next-number lookup for board creation UX
+  { method: "GET", pattern: /^\/api\/sprints\/next-number$/, rule: { allow: ["user", "agent:leader"] } },
+
   // Repositories — user and leader
   { method: "POST", pattern: /^\/api\/repositories$/, rule: { allow: ["user", "agent:leader"] } },
   { method: "DELETE", pattern: /^\/api\/repositories\/[^/]+$/, rule: { allow: ["user", "agent:leader"] } },

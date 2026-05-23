@@ -199,6 +199,7 @@ export const api = {
     getActive: (boardId: string) => request<Sprint>("GET", `/boards/${boardId}/sprints/active`),
     create: (boardId: string, body: CreateSprintInput) => request<Sprint>("POST", `/boards/${boardId}/sprints`, body),
     transition: (sprintId: string, status: SprintStatus) => request<Sprint>("PATCH", `/sprints/${sprintId}`, { status }),
+    getNextNumber: () => request<{ next_number: number }>("GET", "/sprints/next-number"),
   },
   backlogItems: {
     list: (boardId: string, opts?: { status?: BacklogItemStatus }) => {

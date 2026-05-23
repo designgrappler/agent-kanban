@@ -60,16 +60,14 @@ export async function signUpVerified(page: Page, email: string, name = "Test Use
 }
 
 /**
- * Signs up a new user and completes the onboarding flow (2 steps),
+ * Signs up a new user and completes the onboarding flow (single-step create-board),
  * then navigates to the actual board page at /boards/:id.
  *
  * Onboarding steps:
  *   0 - DemoBoard (skip to board creation)
- *   1 - Create Board (board name input + "Create Board" button, also creates API key)
- *   2 - AddMachineSteps (shows API key + "Waiting for connection..." - no skip)
+ *   1 - Create Board (single-step: board name input + "Create Board" button, navigates directly to board)
  *
- * After step 0 completes, the board exists. We fetch the board list via the API
- * and navigate directly instead of waiting for a machine to connect.
+ * After create completes, we fetch the board list via the API and navigate directly.
  */
 export async function signUpAndGetBoard(page: Page, email: string, name = "Test User"): Promise<void> {
   await page.goto("/auth");

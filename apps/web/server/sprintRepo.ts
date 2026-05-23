@@ -94,3 +94,21 @@ export async function assertBoardOwner(db: D1, boardId: string, ownerId: string)
   const row = await db.prepare("SELECT 1 FROM boards WHERE id = ? AND owner_id = ?").bind(boardId, ownerId).first();
   if (!row) throw new HTTPException(404, { message: "Board not found" });
 }
+
+/**
+ * Returns the next sprint number for the given owner:
+ * max(number) across all sprints on all boards owned by this owner, + 1.
+ * Defaults to 1 if no sprints exist yet.
+ */
+export async function getNextSprintNumber(db: D1, ownerId: string): Promise<number> {
+  const row = await db
+    .prepare(
+      `SELECT COALESCE(MAX(s.number), 0) + 1 AS next_number
+       FROM sprints s
+       JOIN boards b ON s.board_id = b.id
+       WHERE b.owner_id = ?`,
+    )
+    .bind(ownerId)
+    .first<{ next_number: number }>();
+  return row?.next_number ?? 1;
+}
