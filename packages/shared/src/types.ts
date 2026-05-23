@@ -306,6 +306,7 @@ export interface TeamMember {
   handoff_to: string[] | null;
   skills: string[] | null;
   md_path: string | null;
+  avatar_path: string | null;
   builtin: number;
   version: string;
   created_at: string;

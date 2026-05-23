@@ -1,5 +1,5 @@
 import type { TeamMember } from "@agent-kanban/shared";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 
 export function useTeamMembers() {
@@ -29,4 +29,36 @@ export function useTeamMember(username: string | undefined) {
   });
 
   return { teamMember, loading, refresh: refetch };
+}
+
+export function useCreateTeamMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: {
+      display_name: string;
+      role?: string;
+      bio?: string;
+      soul?: string;
+      capabilities?: string[];
+      handoff_to?: string[];
+      skills?: string[];
+      builtin?: boolean;
+    }) => api.teamMembers.create(input) as Promise<TeamMember>,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-members"] });
+    },
+  });
+}
+
+export function useUploadAvatar() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ username, file }: { username: string; file: File }) => api.teamMembers.uploadAvatar(username, file) as Promise<TeamMember>,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["team-members"] });
+      queryClient.invalidateQueries({ queryKey: ["team-member", data.username] });
+    },
+  });
 }

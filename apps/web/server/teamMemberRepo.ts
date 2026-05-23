@@ -5,7 +5,7 @@ import { type D1, newLongId, parseJsonFields } from "./db";
 const parseTeamMember = <T extends TeamMember>(row: T) => parseJsonFields(row, ["capabilities", "handoff_to", "skills"]);
 
 const TEAM_MEMBER_COLUMNS =
-  "id, owner_id, name, username, display_name, description, bio, soul, role, capabilities, handoff_to, skills, md_path, builtin, version, created_at, updated_at";
+  "id, owner_id, name, username, display_name, description, bio, soul, role, capabilities, handoff_to, skills, md_path, avatar_path, builtin, version, created_at, updated_at";
 
 /**
  * Returns true when (owner_id, username) already exists in either the
@@ -55,6 +55,7 @@ interface CreateTeamMemberInput {
   handoff_to?: string[] | null;
   skills?: string[] | null;
   md_path?: string | null;
+  avatar_path?: string | null;
   builtin?: boolean;
 }
 
@@ -88,6 +89,7 @@ export async function createTeamMember(db: D1, ownerId: string, input: CreateTea
     handoff_to: input.handoff_to ?? null,
     skills: input.skills ?? null,
     md_path: input.md_path ?? null,
+    avatar_path: input.avatar_path ?? null,
     builtin: input.builtin ? 1 : 0,
     version: "latest",
     created_at: now,
@@ -96,7 +98,7 @@ export async function createTeamMember(db: D1, ownerId: string, input: CreateTea
   await db
     .prepare(`
       INSERT INTO team_members (${TEAM_MEMBER_COLUMNS})
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     .bind(
       member.id,
@@ -112,6 +114,7 @@ export async function createTeamMember(db: D1, ownerId: string, input: CreateTea
       member.handoff_to ? JSON.stringify(member.handoff_to) : null,
       member.skills ? JSON.stringify(member.skills) : null,
       member.md_path,
+      member.avatar_path,
       member.builtin,
       member.version,
       member.created_at,
@@ -119,6 +122,17 @@ export async function createTeamMember(db: D1, ownerId: string, input: CreateTea
     )
     .run();
   return member;
+}
+
+export async function updateTeamMemberAvatarPath(db: D1, ownerId: string, username: string, avatarPath: string): Promise<TeamMember | null> {
+  const now = new Date().toISOString();
+  const result = await db
+    .prepare(
+      `UPDATE team_members SET avatar_path = ?, updated_at = ? WHERE owner_id = ? AND username = ? AND version = 'latest' RETURNING ${TEAM_MEMBER_COLUMNS}`,
+    )
+    .bind(avatarPath, now, ownerId, username)
+    .first<TeamMember>();
+  return result ? parseTeamMember(result) : null;
 }
 
 /**

@@ -31,6 +31,7 @@ import {
 } from "./agentRepo";
 import { closeSession, createSession, listSessions, reopenSession, updateSessionUsage } from "./agentSessionRepo";
 import { authMiddleware } from "./auth";
+import { AvatarValidationError, validateAvatarUpload, writeAvatarFile } from "./avatarStorage";
 import {
   assertBacklogItemOwner,
   assertBoardOwnerForBacklog,
@@ -101,7 +102,13 @@ import {
   reviewTask,
   updateTask,
 } from "./taskRepo";
-import { getTeamMemberByUsername, listTeamMembers } from "./teamMemberRepo";
+import {
+  createTeamMember,
+  getTeamMemberByUsername,
+  listTeamMembers,
+  TeamMemberUsernameConflictError,
+  updateTeamMemberAvatarPath,
+} from "./teamMemberRepo";
 import type { Env } from "./types";
 
 const api = new Hono<{ Bindings: Env }>();
@@ -756,6 +763,99 @@ api.get("/api/team-members/:username", async (c) => {
   const member = await getTeamMemberByUsername(c.env.DB, c.get("ownerId"), c.req.param("username"));
   if (!member) throw new HTTPException(404, { message: "Team member not found" });
   return c.json(member);
+});
+
+api.post("/api/team-members", async (c) => {
+  const body = await c.req.json<{
+    name?: string;
+    display_name?: string;
+    username?: string;
+    bio?: string;
+    soul?: string;
+    role?: string;
+    capabilities?: string[];
+    handoff_to?: string[];
+    skills?: string[];
+    md_path?: string;
+    builtin?: boolean;
+  }>();
+  assertJsonObject(body, "team member");
+
+  // Auto-derive username from display_name if not provided
+  const displayName = body.display_name?.trim() || body.name?.trim();
+  if (!displayName) throw new HTTPException(400, { message: "display_name or name is required" });
+
+  const rawUsername =
+    body.username?.trim() ||
+    displayName
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+  if (!rawUsername || rawUsername.length === 0) throw new HTTPException(400, { message: "Could not derive a valid username from display_name" });
+  if (!isValidUsername(rawUsername)) throw new HTTPException(400, { message: `Invalid username "${rawUsername}"` });
+
+  assertValidAgentRole(body.role);
+  assertValidHandoffRoles(body.handoff_to);
+  assertValidSkillRefs(body.skills);
+
+  const ownerId = c.get("ownerId");
+
+  try {
+    const member = await createTeamMember(c.env.DB, ownerId, {
+      name: displayName,
+      username: rawUsername,
+      display_name: displayName,
+      bio: body.bio ?? null,
+      soul: body.soul ?? null,
+      role: body.role ?? null,
+      capabilities: body.capabilities ?? null,
+      handoff_to: body.handoff_to ?? null,
+      skills: body.skills ?? null,
+      md_path: body.md_path ?? null,
+      builtin: body.builtin ?? false,
+    });
+    return c.json(member, 201);
+  } catch (err) {
+    if (err instanceof TeamMemberUsernameConflictError) {
+      throw new HTTPException(409, { message: err.message });
+    }
+    throw err;
+  }
+});
+
+api.post("/api/team-members/:username/avatar", async (c) => {
+  const username = c.req.param("username");
+  const ownerId = c.get("ownerId");
+
+  // Verify the team member exists and belongs to this owner
+  const existing = await getTeamMemberByUsername(c.env.DB, ownerId, username);
+  if (!existing) throw new HTTPException(404, { message: "Team member not found" });
+
+  const formData = await c.req.formData();
+  const file = formData.get("avatar");
+  if (!file || !(file instanceof File)) {
+    throw new HTTPException(400, { message: "avatar file is required (multipart field: avatar)" });
+  }
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const mimeType = file.type || "application/octet-stream";
+
+  let ext: string;
+  try {
+    ext = validateAvatarUpload(username, mimeType, bytes.byteLength);
+  } catch (err) {
+    if (err instanceof AvatarValidationError) {
+      throw new HTTPException(err.status, { message: err.message });
+    }
+    throw err;
+  }
+
+  const avatarPath = await writeAvatarFile(username, ext, bytes);
+  const updated = await updateTeamMemberAvatarPath(c.env.DB, ownerId, username, avatarPath);
+  if (!updated) throw new HTTPException(404, { message: "Team member not found" });
+
+  return c.json(updated);
 });
 
 // ─── Agent Sessions ───

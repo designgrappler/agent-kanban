@@ -7,6 +7,9 @@ import { defineConfig } from "vite";
 
 const gitSha = execSync("git rev-parse --short HEAD").toString().trim();
 
+// Resolve the repo root (two levels up from apps/web/)
+const repoRoot = path.resolve(__dirname, "../..");
+
 export default defineConfig({
   plugins: [react(), tailwindcss(), cloudflare()],
   define: {
@@ -16,6 +19,12 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@agent-kanban/shared": path.resolve(__dirname, "../../packages/shared/src"),
+    },
+  },
+  server: {
+    fs: {
+      // Allow serving files from .claude/agents/avatars/ during dev
+      allow: [repoRoot],
     },
   },
 });

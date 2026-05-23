@@ -52,6 +52,39 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return data as T;
 }
 
+async function requestMultipart<T>(method: string, path: string, formData: FormData): Promise<T> {
+  const token = getAuthToken() ?? (await refreshAuthToken());
+  if (!token) throw new Error("NOT_AUTHENTICATED");
+
+  let res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (res.status === 401) {
+    const freshToken = await refreshAuthToken();
+    if (freshToken) {
+      res = await fetch(`${API_BASE}${path}`, {
+        method,
+        headers: { Authorization: `Bearer ${freshToken}` },
+        body: formData,
+      });
+    }
+  }
+
+  const data = (await res.json()) as any;
+
+  if (!res.ok) {
+    const err = new Error(data.error?.message || `HTTP ${res.status}`);
+    (err as any).code = data.error?.code || "UNKNOWN";
+    (err as any).status = res.status;
+    throw err;
+  }
+
+  return data as T;
+}
+
 export const api = {
   tasks: {
     list: (params?: Record<string, string>) => {
@@ -113,6 +146,21 @@ export const api = {
   teamMembers: {
     list: () => request<any[]>("GET", "/team-members"),
     get: (username: string) => request<any>("GET", `/team-members/${username}`),
+    create: (input: {
+      display_name: string;
+      role?: string;
+      bio?: string;
+      soul?: string;
+      capabilities?: string[];
+      handoff_to?: string[];
+      skills?: string[];
+      builtin?: boolean;
+    }) => request<any>("POST", "/team-members", input),
+    uploadAvatar: (username: string, file: File) => {
+      const form = new FormData();
+      form.append("avatar", file);
+      return requestMultipart<any>("POST", `/team-members/${username}/avatar`, form);
+    },
   },
   machines: {
     list: () => request<any[]>("GET", "/machines"),

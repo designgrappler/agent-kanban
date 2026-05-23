@@ -32,6 +32,7 @@ async function applyMigrations(db: D1Database) {
     "0019_agent_versions.sql",
     "0021_subagents.sql",
     "0027_team_members.sql",
+    "0028_team_members_avatar.sql",
   ];
   for (const file of files) {
     const sql = readFileSync(join(MIGRATIONS_DIR, file), "utf-8");
