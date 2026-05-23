@@ -12,10 +12,7 @@ import { Button, buttonVariants } from "./ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
-const navLinks = [
-  { to: "/agents", label: "Agents" },
-  { to: "/machines", label: "Machines" },
-];
+const navLinks = [{ to: "/agents", label: "Agents" }];
 
 function ThemeIcon({ theme }: { theme: Theme }) {
   if (theme === "light") {
@@ -144,7 +141,7 @@ export function Header() {
             </>
           )}
         </div>
-        {/* Right: Nav + Theme + Avatar */}
+        {/* Right: Nav + Avatar */}
         <div className="flex items-center gap-1">
           <nav className="hidden md:flex items-center gap-1">
             {navLinks.map(({ to, label }) => (
@@ -199,20 +196,9 @@ export function Header() {
                 Settings
               </DropdownMenuItem>
 
-              <DropdownMenuItem onClick={() => navigate("/repositories")}>
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                </svg>
-                Repositories
+              <DropdownMenuItem onClick={cycleTheme}>
+                <ThemeIcon theme={theme} />
+                Theme: {theme}
               </DropdownMenuItem>
 
               {isAdmin && (
@@ -254,14 +240,6 @@ export function Header() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {/* Theme toggle */}
-          <Tooltip>
-            <TooltipTrigger render={<Button variant="ghost" size="icon-sm" onClick={cycleTheme} />}>
-              <ThemeIcon theme={theme} />
-            </TooltipTrigger>
-            <TooltipContent>Theme: {theme}</TooltipContent>
-          </Tooltip>
         </div>
       </header>
 

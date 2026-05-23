@@ -18,10 +18,7 @@ test.describe("Header and Navigation", () => {
     await expect(agentsLink).toHaveClass(/text-accent/);
     await expect(agentsLink).toHaveClass(/bg-accent-soft/);
 
-    // expect: The 'Machines' nav link is in the default tertiary color
-    const machinesLink = header.getByRole("link", { name: "Machines" });
-    await expect(machinesLink).toBeVisible();
-    await expect(machinesLink).toHaveClass(/text-content-tertiary/);
-    await expect(machinesLink).not.toHaveClass(/text-accent/);
+    // expect: Machines link is no longer in the nav bar
+    await expect(header.getByRole("link", { name: "Machines" })).not.toBeVisible();
   });
 });

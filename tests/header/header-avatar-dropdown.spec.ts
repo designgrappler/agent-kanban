@@ -22,9 +22,11 @@ test.describe("Header and Navigation", () => {
     await expect(dropdown).toBeVisible();
     await expect(dropdown.getByText(userName)).toBeVisible();
 
-    // expect: Menu items include 'Settings', 'Repositories', and 'Sign out'
-    await expect(dropdown.getByText("Settings")).toBeVisible();
-    await expect(dropdown.getByText("Repositories")).toBeVisible();
-    await expect(dropdown.getByText("Sign out")).toBeVisible();
+    // expect: Menu items include 'Settings', 'Theme', and 'Sign out'
+    // 'Repositories' has been removed from the dropdown (S13-T3)
+    await expect(dropdown.getByRole("menuitem", { name: "Settings" })).toBeVisible();
+    await expect(dropdown.getByRole("menuitem", { name: /Theme/ })).toBeVisible();
+    await expect(dropdown.getByRole("menuitem", { name: "Sign out" })).toBeVisible();
+    await expect(dropdown.getByRole("menuitem", { name: "Repositories" })).not.toBeVisible();
   });
 });
