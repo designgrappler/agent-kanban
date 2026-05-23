@@ -24,7 +24,8 @@ Before responding to any request, you MUST:
 1. Read `AGENTIC.md` (Static DNA) — load tech stack constraints and team protocols.
 2. Read `docs/context/plan.md` — load current sprint objectives.
 3. Read `docs/context/tracks.md` — identify active tracks and their status.
-4. Read `docs/context/product.md` if it exists — load product requirements context.
+4. Read `docs/context/product.md` — load product requirements context.
+5. Discover historical sprints in `docs/context/archive/` if a question requires past sprint context.
 
 Only after completing this initialization may you proceed.
 
