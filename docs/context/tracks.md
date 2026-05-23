@@ -1,20 +1,34 @@
 # Agent Kanban — Active Tracks
 
-## Current Sprint: None — Sprint 12 CLOSED 2026-05-22; Sprint 13 not yet opened
+## Current Sprint: Sprint 13 — UX Polish (OPEN 2026-05-22)
 
-Sprint 12 closed 2026-05-22 with both close-gate tracks (T1 paper + T2 code) merged to main. `/close-sprint` skill dogfooded: working-tree clean + Playwright 80 passed / 8 skipped at close.
+Sprint 13 opened 2026-05-22, immediately after Sprint 12 closed. Theme: UX polish on Sprint 12's team_members work — collapse worker/persona conflation in the UI, fix empty states, consolidate navigation, tighten Create Board UX.
 
-**Strategic note:** Sprint 13 is the dedicated Agent OS install diagnostic per Tim's pivot — investigation only, no code changes. Sprint 14 reacts to S13 findings and absorbs deferred items.
+**Strategic note:** the Agent OS install diagnostic is now Sprint 14 (was previously slotted as Sprint 13). Tim's call: ship the kanban polish while the Phase 1 team_members code is fresh; the diagnostic happens one sprint later. Sprint 15 absorbs the previously-deferred S11/S12 carry-forward items.
 
-See `Sprint 13 — Agent OS install diagnostic` and `Sprint 14 — Carry-forward` sections below.
+| Track  | Goal                                                                                                                                                                                      | Type             | Status      |
+|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|-------------|
+| S13-T1 | AgentsPage restructure — drop Sub-agents tab, rename "Agents" → "Team members", remove Workers section, strip tasks/tok/cost/crypto-ID from cards, drop model field; cards = role + @handle | Code close-gate  | Bridge issued — foundation; T2 depends on it |
+| S13-T2 | Empty state + Add-default-agent flow — zero-state CTAs, "Add backlog items" auto-creates a default board then routes to its backlog, "Recruit an agent" → Default agents picker, custom team-member form (avatar local-file upload + Agent-OS template fields) | Code close-gate  | Bridge issued — depends on T1 |
+| S13-T3 | Navigation consolidation — fold Machines into Settings as "Daemon connection" tab, remove Machines top-nav, drop Repositories from profile menu, move theme toggle into profile menu, add Settings → Labels tab | Code close-gate  | Bridge issued — parallel-safe with T1/T2/T4 |
+| S13-T4 | Create Board UX — auto-prefix `S{N}-{user-defined}`, relabel "Board name" → "Sprint board name" and "Theme" → "Sprint theme", remove the terminal command block (AddMachineSteps) from the flow | Code close-gate  | Bridge issued — parallel-safe with T1/T2/T3 |
+| S13-S1 | `pnpm dev` auto-open one-liner — `server.open: true` in `apps/web/vite.config.ts`                                                                                                         | Stretch          | Bridge issued — zero merge requirement; folds into whichever close-gate lands first if not opened |
+
+**Close gate:** T1 + T2 + T3 + T4 merged to `main` and green via `/close-sprint`. S1 is stretch; sprint closes without it.
+
+**Dependency order:** T1 → T2 (T2 builds on the restructured surface); T3 and T4 are parallel-safe with T1's work.
+
+**Stability check:** 4 close-gate code tracks at the upper edge of the ≤4 rule. T4 is small, T1 is mostly destructive. Mitigation: surface immediately if any track grows mid-sprint.
+
+See `docs/context/plan.md` for full Bridges (T1, T2, T3, T4, S1).
 
 ---
 
 ## Future Backlog
 
-### Sprint 13 (planned) — Agent OS install diagnostic
+### Sprint 14 (planned) — Agent OS install diagnostic
 
-A dedicated investigation sprint following S12 close. Goal: determine whether the Agent OS install on this fork was successful, and if not, identify where it went wrong. Investigation only — no code changes. Outcomes inform Sprint 14 scope.
+A dedicated investigation sprint following S13 close. Goal: determine whether the Agent OS install on this fork was successful, and if not, identify where it went wrong. Investigation only — no code changes. Outcomes inform Sprint 15 scope.
 
 Surfacing questions for the diagnostic (preliminary, not exhaustive):
 - Why don't `.claude/agents/peaches.md|skylar.md|bandit.md` load as `subagent_type` invocations on this fork, while `playwright-test-*` agents in the same directory do?
@@ -24,17 +38,20 @@ Surfacing questions for the diagnostic (preliminary, not exhaustive):
 
 Reference memory: [[agent-os-role-drift-investigation]].
 
-### Sprint 14 (provisional) — Carry-forward from S11/S12
+### Sprint 15 (provisional) — Carry-forward from S11/S12 + previously-S14
 
-Items deferred from Sprint 12's original plan; will be re-prioritized after the S13 diagnostic lands. Some may become moot or reshape based on diagnostic findings.
+Items deferred from Sprint 12's original plan and re-deferred from the previously-named-S14 (now S15 because S14 is the diagnostic). Will be re-prioritized after the S14 diagnostic lands. Some may become moot or reshape based on diagnostic findings.
 
 - **`/sprint-open` skill** (was S12-T3) — project-level skill mirroring `/close-sprint`. Symmetric gap surfaced when `/close-sprint` referenced it.
 - **Env hygiene combo** (was S12-T4) — (a) diagnose + fix `prepare: lefthook install` failure on `pnpm install --frozen-lockfile`; (b) extend `json_query` redaction filter (`refresh_token` + `x-api-key`).
 - **Twice-green proof for daemon smoke** (was S12-T5; was S11 carry-forward) — first real operator run; verification, not code.
 - **FATAL stderr/stdout consistency** in `scripts/daemon-smoke-test.sh` (was S12-T6) — pre-existing inconsistency at lines 148, 395, 400, 409, 424, 543.
 - **Peaches task-refinement workflow scoping** (was S12-T7; longstanding board task `d5kv1hfw1d2v`) — design-only doc.
-- **team_members Phase 2** — `attributed_team_member_id` columns on `task_actions`/`messages`/`tasks`; `ak team sync` CLI command; richer chat-with-team-member UX. Gated by S12-T2 Phase 1 landing.
-- **Claude Code subagent loader gap** — separate from team_members work. The fact that Peaches/Skylar/Bandit don't register as `subagent_type` on this fork is its own concern; team_members entity does NOT fix the loader. Likely consumed by S13 diagnostic.
+- **team_members Phase 2** — `attributed_team_member_id` columns on `task_actions`/`messages`/`tasks`; `ak team sync` CLI command; richer chat-with-team-member UX. Gated by S12-T2 Phase 1 landing (complete).
+- **Claude Code subagent loader gap** — separate from team_members work. The fact that Peaches/Skylar/Bandit don't register as `subagent_type` on this fork is its own concern; team_members entity does NOT fix the loader. Likely consumed by S14 diagnostic.
+- **Daemon spawn-at-create** — new track that lands the daemon-onboarding flow on board creation (S13-T4 leaves a TODO; this track fulfills it).
+- **Login/SSO entry point** — deferred from S13-T3 per Tim's locked decision.
+- **Labels global promotion** — deferred from S13-T3 per Tim's locked decision 2026-05-22 (T3 ships a Settings → Labels stub only). Schema migration moving labels from `boards.labels` to a dedicated `labels` table with `owner_id`, rewrite of all label CRUD endpoints, and consumer updates. Real refactor; track scope unto itself.
 
 ### Longstanding
 
@@ -42,7 +59,7 @@ Items deferred from Sprint 12's original plan; will be re-prioritized after the 
 
 ---
 
-*Last updated: 2026-05-22 (Sprint 12 CLOSED — both close-gate tracks (S12-T1 design merge `a9732c3`, S12-T2 team_members Phase 1 `0ce67d0`) merged green. `/close-sprint` skill dogfooded: working-tree clean + Playwright 80/0/8.)*
+*Last updated: 2026-05-22 (Sprint 13 OPEN — UX Polish on team_members; close-gate tracks T1/T2/T3/T4 + stretch S1; Bridges in `docs/context/plan.md`. Sprint 14 = Agent OS install diagnostic. Sprint 15 = carry-forward from S11/S12 + previously-S14 items.)*
 
 ---
 

@@ -2,9 +2,301 @@
 
 ---
 
-## Current Sprint: None — Sprint 12 CLOSED 2026-05-22; Sprint 13 not yet opened
+## Current Sprint: Sprint 13 — UX Polish on team_members (OPEN 2026-05-22)
 
-Sprint 12 closed 2026-05-22 with both close-gate tracks (T1 paper + T2 code) merged to main. `/close-sprint` skill dogfooded at close: working-tree clean + Playwright 80 passed / 8 skipped. Strategic note: Sprint 13 is the dedicated Agent OS install diagnostic per Tim's pivot — investigation only, no code changes. Full archive immediately below.
+### Objective
+
+Polish the kanban surface that just landed in Sprint 12. Sprint 12's team_members work shipped Phase 1 as-spec but exposed UX seams: the AgentsPage now shows three concepts (Workers, Sub-agents, team members) when the product really has two (team members, daemon-spawned workers); empty states do not yet exist for the no-board / no-team-member case; navigation has accreted a top-level Machines entry plus a duplicate Repositories link in the profile menu; the Create Board flow leaks daemon-onboarding plumbing (a copyable terminal command) into the path a human takes to start a sprint.
+
+**Strategic note — why kanban polish before the Agent OS diagnostic:** the previously-planned Sprint 13 (Agent OS install diagnostic) is now Sprint 14. Tim's call: the kanban surface is the place team_members actually become real to a user, and shipping the polish while the Phase 1 code is fresh means we exit S13 with a board that visibly reflects the team-as-first-class direction. The diagnostic still happens — just one sprint later. Sprint 15 absorbs the previously-deferred S11/S12 carry-forward items.
+
+### Tracks
+
+| Track  | Goal                                                                                                                                                                                      | Type             | Status      |
+|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|-------------|
+| S13-T1 | AgentsPage restructure — drop Sub-agents tab, rename "Agents" → "Team members", remove Workers section, strip tasks/tok/cost/crypto-ID from cards, drop model field; cards = role + @handle | Code close-gate  | Bridge issued — foundation; T2 depends on it |
+| S13-T2 | Empty state + Add-default-agent flow — zero-state header + onboarding CTAs, "Add backlog items" auto-creates a default board then routes to its backlog, "Recruit an agent" → Default agents picker, custom team-member form (avatar local-file upload + Agent-OS template fields) | Code close-gate  | Bridge issued — depends on T1 |
+| S13-T3 | Navigation consolidation — fold Machines into Settings as "Daemon connection" tab, remove Machines top-nav, drop Repositories from profile menu, move theme toggle into profile menu, add Settings → Labels tab | Code close-gate  | Bridge issued — parallel-safe with T1/T2/T4 |
+| S13-T4 | Create Board UX — auto-prefix `S{N}-{user-defined}`, relabel "Board name" → "Sprint board name" and "Theme" → "Sprint theme", remove the terminal command block (AddMachineSteps) from the flow | Code close-gate  | Bridge issued — parallel-safe with T1/T2/T3 |
+| S13-S1 | `pnpm dev` auto-open one-liner — `server.open: true` in `apps/web/vite.config.ts`                                                                                                         | Stretch          | Bridge issued — zero merge requirement; folds into whichever close-gate lands first if not opened |
+
+### Dependency Order
+
+```
+S13-T1 (AgentsPage restructure)  ──> S13-T2 (empty state + add-agent flow on the restructured surface)
+S13-T3 (navigation consolidation)  ──┐
+S13-T4 (create-board UX)             ├── parallel with T1; independent of each other and of T1's edits
+S13-S1 (vite.config one-liner)       ──┘  zero merge requirement; folds into whichever close-gate lands first
+```
+
+T1 must merge to `main` first so T2's empty-state and add-agent surfaces sit on the cleaned-up AgentsPage rather than chasing a moving target. T3 and T4 do not touch AgentsPage and are parallel-safe with T1's work. T1 is mostly destructive (deletes Sub-agents tab, Workers section, model/crypto fields) — small additive surface.
+
+### Circuit-Breaker Risk
+
+**Four close-gate code tracks sits at the upper edge of the ≤4 stability rule.** Mitigation: T4 is small (one route file, one removal), T1 is mostly destructive (deletes more than it adds), T3 is config + nav wiring. T2 is the heaviest because it integrates auto-create-default-board with the empty state and adds an avatar-upload form. **If any track grows unexpectedly mid-sprint (especially T2's auto-create flow), surface immediately to Conductor rather than burning the budget mid-sprint.** Any track triggering 3 consecutive same-root-cause failures stops immediately and routes to Peaches for Red Flag Analysis.
+
+### Definition of Done (Sprint 13)
+
+- [ ] **S13-T1 (AgentsPage restructure):**
+  - [ ] `apps/web/src/routes/AgentsPage.tsx` — Sub-agents `<TabsTrigger>` + `<TabsContent>` removed; tab list collapses to single "Team members" tab (Tabs structure may be removed entirely if a single tab is left).
+  - [ ] "Agents" tab label → "Team members" everywhere it appears in `AgentsPage.tsx` (page title, breadcrumbs, tab label).
+  - [ ] Workers section removed from `AgentsPage.tsx` (the `Workers <span>{latestAgents.length}</span>` block and everything it renders).
+  - [ ] Card render path strips: tasks count, tok/cost meters, crypto fingerprint chip / `AgentIdenticon` invocations from team-member cards. Cards display **role + @handle only** (no model field — Tim accepted Peaches' recommendation to drop model from card surface).
+  - [ ] `apps/web/src/components/TeamCard.tsx` — third-field area replaced; no `model`, no `runtime`, no fingerprint chip. Initials avatar + role + @handle only.
+  - [ ] `AgentIdenticon` is **NOT removed** from the codebase — it is still used by `TaskCard.tsx`, `ActivityLog.tsx`, `TaskChatDrawer.tsx`, `AgentDetailPage.tsx`, `AgentNewPage.tsx`, `AgentEditPage.tsx`, `AgentProfile.tsx`, `FloatingAvatar.tsx`, `TaskDetail.tsx`. T1 only removes its invocation from team-member card render paths.
+  - [ ] Vitest unit tests updated for `TeamCard` (snapshot or assertion that crypto/model fields no longer render).
+  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` exits zero.
+  - [ ] Bandit PASS — confirm `AgentIdenticon` callsites outside the team-member surface are unchanged.
+- [ ] **S13-T2 (empty state + add-agent flow):**
+  - [ ] `AgentsPage.tsx` zero-state branch: when `teamMembers.length === 0 && boards.length === 0`, render an empty-state header with onboarding copy "A sprint board can be created by adding backlog items, prompting an agent, or creating manually." plus two CTAs: "Add backlog items" (primary) and "Create board" (secondary).
+  - [ ] **"Add backlog items" CTA flow (Tim's locked decision):** click handler (a) calls `api.boards.create({ name: "Default board", type: "dev", theme: "Default sprint" })` if no boards exist, then (b) navigates to `/boards/:boardId/backlog` (the existing route served by `apps/web/src/routes/BacklogPage.tsx`). Default board name and theme are placeholders Skylar will leave as `"Default board"` / `"Default sprint"` unless Tim corrects in review — flagged in the report as an uncertainty call.
+  - [ ] "Create board" CTA navigates to `/boards/new` (existing `NewBoardPage`).
+  - [ ] Header CTA on AgentsPage: "Recruit an agent" routes to a "Default agents" picker (template list sourced from the Agent OS install — `BUILTIN_TEAM_MEMBERS` in `packages/shared/src/templates.ts` is the existing source).
+  - [ ] Default-template picker title → "Add default agent".
+  - [ ] Custom team-member form title → "Add team member" (per Peaches' recommendation; "Add default agent" is misleading on the custom flow).
+  - [ ] Custom form is **team-members-only** — no `username` (auto-derived), no `runtime`, no `model`, no crypto/keypair fields.
+  - [ ] Avatar upload: file input that stores the image at a local path under `.claude/agents/avatars/{username}.{ext}` (Tim's locked decision: local file path, loaded via dev server). Server endpoint accepts the upload and writes the file; DB stores the relative path string, not the binary. Path schema: `team_members.avatar_path TEXT NULL` (new column via migration if not already present from Sprint 12 — verify before adding).
+  - [ ] Form fields match the Agent OS agent template: `display_name`, `role`, `bio`, `soul`, `capabilities`, `handoff_to`, `skills` (matches the columns landed in Sprint 12 per `docs/designs/team-agents.md`).
+  - [ ] Vitest + integration tests: empty-state render, auto-create-default-board flow (mock `api.boards.create`, assert navigation), avatar-upload happy path (mock fs).
+  - [ ] Playwright E2E: zero-state → "Add backlog items" → board exists → backlog renders.
+  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` exits zero.
+  - [ ] Bandit PASS — confirm avatar upload path is owner-scoped and does not allow path traversal (`{username}` sanitized).
+- [ ] **S13-T3 (navigation consolidation):**
+  - [ ] Machines top-nav entry removed from `apps/web/src/components/Header.tsx` (line 17: `{ to: "/machines", label: "Machines" }`).
+  - [ ] Settings page (`apps/web/src/routes/AccountSettingsPage.tsx` — there is no `SettingsPage.tsx`; settings live in `AccountSettingsPage.tsx`) gains a "Daemon connection" tab/section that hosts the existing Machines content (move logic from `MachinesPage.tsx`; that page becomes a redirect or is removed — Skylar picks the cleaner of the two; admin variant `routes/admin/AdminMachinesPage` is unaffected).
+  - [ ] AccountSettingsPage gains a new "Labels" tab (labels operate globally — distinct from `BoardLabelsPage` which is per-board).
+  - [ ] Profile menu in `Header.tsx` (the `DropdownMenu` block starting around line 166): remove the "Repositories" `DropdownMenuItem` (line 202-216 area).
+  - [ ] Theme toggle moved into the profile menu — currently the cycle-theme button is a sibling of the avatar dropdown trigger in `Header.tsx`. Move it into the dropdown content as a `DropdownMenuItem` (or sub-trigger). Header bar no longer shows a standalone theme button.
+  - [ ] **Login/SSO entry point is OUT of scope** (Tim's locked decision: deferred to a later sprint). Skylar must NOT add login/SSO surface in T3.
+  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` exits zero.
+  - [ ] Bandit PASS.
+- [ ] **S13-T4 (Create Board UX):**
+  - [ ] `apps/web/src/routes/NewBoardPage.tsx` — "Board name" label → "Sprint board name"; "Theme" label → "Sprint theme".
+  - [ ] Auto-prefix `S{N}-{user-defined}` — on submit, compute the next sprint number (call existing sprint state — `api.sprints.list({ board_id })` won't work pre-create; use `api.sprints.getNextNumber()` if it exists, otherwise call `GET /api/sprints?status=active` to find the highest current number and increment, OR document the lookup pattern). Skylar's call on the cleanest implementation; flag in PR if the API doesn't expose a getNext-style endpoint.
+  - [ ] **Remove the terminal command block** — delete the Step 1 `AddMachineSteps` invocation from `NewBoardPage.tsx`. After board create, route directly to `/boards/:id` (skip the `npx agent-kanban start --api-url ... --api-key ...` instructions). The `AddMachineSteps` component itself stays in the codebase (used elsewhere — verify with grep before removing the file). The `apiKeyDisplay`/`apiKeyId` state and the `setStep(1)` flow can be removed from `NewBoardPage.tsx`; the underlying api-key creation may still be needed for daemon onboarding from Settings → Daemon connection (T3's surface).
+  - [ ] **Daemon-spawn-at-create is OUT of scope** (Tim's locked decision: separate future track). T4 leaves a TODO comment in `NewBoardPage.tsx` near the removed step block: `// TODO(future-track): daemon spawn-at-create flow lands separately`.
+  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` exits zero.
+  - [ ] Bandit PASS.
+- [ ] **S13-S1 (stretch — `pnpm dev` auto-open):**
+  - [ ] `apps/web/vite.config.ts` — add `server: { open: true }` (or merge into existing `server` block).
+  - [ ] Verification: `pnpm dev` opens the browser to the local URL once the server is ready.
+  - [ ] Zero merge requirement — folds into whichever close-gate track lands first if S1 doesn't open as its own PR.
+- [ ] **Sprint close gate:** S13-T1, S13-T2, S13-T3, S13-T4 merged to `main` and green via `/close-sprint`. S13-S1 is a stretch — sprint closes without it.
+
+### Carries to Sprint 15 (displaced by S14 = diagnostic)
+
+The following items are deferred from Sprint 12's original plan and re-deferred from the previously-named-S14:
+
+- `/sprint-open` skill — symmetric counterpart to `/close-sprint`.
+- Env hygiene combo — `prepare: lefthook install` failure on `pnpm install --frozen-lockfile` + `json_query` redaction filter coverage (`refresh_token` + `x-api-key`).
+- Twice-green proof for daemon smoke — first real operator run; verification, not code.
+- FATAL stderr/stdout consistency in `scripts/daemon-smoke-test.sh` — pre-existing inconsistency at lines 148, 395, 400, 409, 424, 543.
+- Peaches task-refinement workflow scoping — design-only doc; longstanding board task `d5kv1hfw1d2v`.
+- team_members Phase 2 — `attributed_team_member_id` columns on `task_actions`/`messages`/`tasks`; `ak team sync` CLI command; richer chat-with-team-member UX. Gated by Phase 1 landing (S12-T2 complete).
+
+Sprint 14 is the dedicated Agent OS install diagnostic per Tim's pivot — investigation only, no code.
+
+---
+
+## Sprint 13 Bridges
+
+### HANDOFF BRIDGE — S13-T1
+**Topic:** AgentsPage restructure — drop Sub-agents tab, rename "Agents" → "Team members", remove Workers section, strip tasks/tok/cost/crypto-ID from cards, drop model field
+**Track:** S13-T1
+**Specialist:** Skylar
+**Static DNA Check:** Aligned with AGENTIC.md — pure frontend restructure under `apps/web/src/`. No schema, no migration, no auth surface, no new identity types. Mostly destructive (deletes Sub-agents tab + Workers section + model/crypto fields from team-member cards). The `AgentIdenticon` component is preserved in the codebase — only its invocation on team-member card render paths is removed; nine other callsites (`TaskCard.tsx`, `ActivityLog.tsx`, `TaskChatDrawer.tsx`, `AgentDetailPage.tsx`, `AgentNewPage.tsx`, `AgentEditPage.tsx`, `AgentProfile.tsx`, `FloatingAvatar.tsx`, `TaskDetail.tsx`) stay untouched. CLAUDE.md UI principle alignment: no new lifecycle buttons, no drag-and-drop, no claim/release affordances added.
+**Dynamic DNA State:**
+- **Product Context:** Sprint 12 landed team_members Phase 1 as a Team section above the Workers section in the Agents tab. The Sub-agents tab is the legacy Claude-Code-subagent surface from before team_members existed; with team_members live, it conflates three concepts where the product wants two. T1 collapses to a single "Team members" tab, removes the Workers section entirely (workers are still visible per-task on the board view; AgentsPage is for the team), and strips fields that don't belong on a team-member card (tasks count, tok/cost meters, crypto fingerprint, model). Cards become **role + @handle** only — Tim accepted Peaches' recommendation to drop the model field outright (it's a daemon concern, not a team-member identity concern).
+- **Current Plan:** Sprint 13 → S13-T1 in this file.
+- **Execution Files:**
+  - `apps/web/src/routes/AgentsPage.tsx` — primary edit. Confirmed structure: Tabs at line ~70 with `subagents` and `agents` triggers; Workers section header at line 99; `useSubagents` hook at line 36; `Sub-agents` content block at line 116; `RuntimeMeta` and `RuntimeChip` helpers at lines 158, 178; `models` mapping at line 261. Skylar: remove the `subagents` Tab trigger + content, remove the Workers section block, rename the remaining tab to "Team members", and remove `RuntimeMeta`/`RuntimeChip`/`models` if they become unreferenced after the Sub-agents content goes away (tsc will flag unused).
+  - `apps/web/src/components/TeamCard.tsx` — strip third-field area (model, runtime chips), strip any fingerprint chip / `AgentIdenticon` invocation. Cards render: initials avatar + display_name + role-glyph + @handle. Verify the existing component (landed in S12-T2) and edit accordingly.
+  - **NOT in scope:** `apps/web/src/components/AgentCard.tsx` — file does NOT exist (worker agents are rendered inline in `AgentsPage.tsx` via the now-removed Workers section). `AgentProfile.tsx`, `AgentDetailPage.tsx`, `AgentEditPage.tsx`, `AgentNewPage.tsx` — all out of scope (worker-agent surfaces, not team-member surfaces). Skylar must NOT touch these.
+  - `apps/web/src/hooks/useSubagents.ts` (or wherever `useSubagents` is defined) — keep the file if used elsewhere; delete only if no other consumer (run `grep -rn useSubagents apps/web/src` first).
+  - Tests: `tests/teamCard.test.tsx` (or equivalent) — update assertions to confirm no model/crypto rendering. Add test that `AgentIdenticon` is NOT in the rendered tree of `TeamCard`.
+- **Migration Safety:** N/A — no schema change.
+- **Security Review:** N/A — no auth surface, no new endpoints. The `team_members.public_key` column from Sprint 12 stays in the schema; we just stop rendering the fingerprint chip on the card. Phase 2 may revisit when attribution lands.
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s13-t1-agents-page-restructure track/s13-t1-agents-page-restructure`
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — all green (lefthook chain).
+2. **Surface check:** `pnpm dev` → navigate to `/agents`. Confirm: (a) single "Team members" tab (no Sub-agents tab), (b) no Workers section, (c) team-member cards show initials avatar + display_name + role + @handle, (d) no model/runtime/fingerprint/identicon visible on cards.
+3. **Sentinel — `AgentIdenticon` callsites unaffected outside the team-member surface:** `git diff apps/web/src/components/TaskCard.tsx apps/web/src/components/ActivityLog.tsx apps/web/src/components/TaskChatDrawer.tsx apps/web/src/components/FloatingAvatar.tsx apps/web/src/components/TaskDetail.tsx apps/web/src/components/AgentProfile.tsx apps/web/src/routes/AgentDetailPage.tsx apps/web/src/routes/AgentNewPage.tsx apps/web/src/routes/AgentEditPage.tsx` — all empty.
+4. **Visual proof:** screenshot of the restructured AgentsPage attached to the PR (sentinel against unintended layout regressions).
+5. Playwright E2E suite green (lefthook pre-push gate covers this on push to main).
+6. Bandit QA — confirm scope discipline (worker-agent surfaces untouched), confirm `AgentIdenticon` kept in codebase, confirm no auth surface modified.
+
+**Next Step:** Skylar — read `apps/web/src/routes/AgentsPage.tsx` end-to-end first to map the Tabs structure (confirmed: `subagents` tab line 70, Workers section line 99, content block line 116). Then read `apps/web/src/components/TeamCard.tsx` to map the field render paths. Run `grep -rn AgentIdenticon apps/web/src/` and `grep -rn useSubagents apps/web/src/` before deleting anything — the rule is "remove invocations from the team-member surface, leave shared components alone." Edit AgentsPage and TeamCard, run tsc to surface unused imports, delete unused helpers (`RuntimeMeta`, `RuntimeChip`) cleanly. Run the verification matrix. Invoke Bandit.
+
+---
+
+### HANDOFF BRIDGE — S13-T2
+**Topic:** Empty state + Add-default-agent flow — zero-state CTAs ("Add backlog items" auto-creates a default board then routes; "Create board" → NewBoardPage), header CTA "Recruit an agent" → Default agents picker, custom team-member form (avatar local-file upload + Agent-OS template fields)
+**Track:** S13-T2
+**Specialist:** Skylar
+**Depends on:** S13-T1 merged to `main` (so the empty state and add-agent surface sit on the cleaned-up AgentsPage rather than chasing a moving target).
+**Static DNA Check:** Aligned — frontend additions plus a small server-side avatar upload endpoint. New owner-scoped POST endpoint (avatar upload) follows the existing route patterns. `team_members.avatar_path` column added via migration if not present; verify Sprint 12 migration before adding. No new identity types, no auth changes. Avatar files live under `.claude/agents/avatars/` (Tim's locked decision: local file path, loaded via dev server) — out-of-tree relative to `apps/web/src/`.
+**Dynamic DNA State:**
+- **Product Context:** AgentsPage today renders the Team section even when there are zero team members and zero boards — no onboarding affordance. T2 lands the zero-state branch (when `teamMembers.length === 0 && boards.length === 0`) with a header explaining the kanban model and two CTAs: "Add backlog items" and "Create board".
+
+  **Auto-create-default-board flow (highest-risk integration in this sprint — spelled out per Tim):**
+  - User clicks "Add backlog items" on the zero-state.
+  - Handler checks if any board exists for the owner via `api.boards.list()`. If at least one exists, route to `/boards/:firstBoardId/backlog` directly.
+  - If no boards exist, the handler calls `api.boards.create({ name: "My Board", type: "dev", theme: "" })` to seed a default board synchronously.
+  - On success, the handler navigates to `/boards/:newBoardId/backlog` (the existing `BacklogPage` route at `apps/web/src/routes/BacklogPage.tsx`).
+  - Failure mode: surface a toast error and stay on AgentsPage; do NOT partial-create.
+  - **Default name "My Board" and empty theme are Tim's locked decision 2026-05-22.** User can rename later from Board Settings.
+
+  **Header CTA "Recruit an agent":** routes to a Default agents picker. The picker is a new modal or page that lists templates from `BUILTIN_TEAM_MEMBERS` in `packages/shared/src/templates.ts` (the seed source landed in Sprint 12). Title: "Add default agent". User picks a template; a team_member is created via the existing `team_members` POST endpoint (S12 should have wired this; if not, T2 adds it).
+
+  **Custom team-member form:** title "Add team member" (Peaches' recommendation; the default-template picker is "Add default agent"; custom form needs its own honest label). Fields match the Agent OS agent template per `docs/designs/team-agents.md`: `display_name`, `role`, `bio`, `soul`, `capabilities`, `handoff_to`, `skills`. **Drop fields that conflate with worker-agent identity:** no `username` input (auto-derive from `display_name`), no `runtime`, no `model`, no crypto/keypair fields.
+
+  **Avatar upload (Tim's locked decision: local file path):** `<input type="file" accept="image/*">` in the form. On submit, POST to a new owner-scoped endpoint that writes the file to `.claude/agents/avatars/{username}.{ext}` (where `{ext}` is derived from MIME type, restricted to `png|jpg|jpeg|webp`). DB stores the relative path string in `team_members.avatar_path TEXT NULL`. The dev server serves files from this path via a static route. **Path traversal hardening:** sanitize `{username}` against `^[a-z0-9_-]+$` regex; reject otherwise. Reject if file size > 1 MB.
+
+- **Current Plan:** Sprint 13 → S13-T2 in this file.
+- **Execution Files:**
+  - `apps/web/src/routes/AgentsPage.tsx` — add zero-state branch (gate on `teamMembers.length === 0 && boards.length === 0` after T1's restructure).
+  - `apps/web/src/components/TeamMembersEmptyState.tsx` — NEW. Header copy, two CTAs ("Add backlog items" primary, "Create board" secondary), wires the auto-create-default-board flow.
+  - `apps/web/src/components/AddTeamMemberDialog.tsx` (or `.../AddTeamMemberForm.tsx`) — NEW. The custom team-member form with avatar upload + Agent-OS template fields. Title: "Add team member".
+  - `apps/web/src/components/DefaultAgentsPicker.tsx` (or modal variant) — NEW. Lists `BUILTIN_TEAM_MEMBERS` templates; title "Add default agent"; on select calls the team-members POST endpoint.
+  - `apps/web/src/components/Header.tsx` — wire "Recruit an agent" header CTA on AgentsPage to the Default agents picker (may need a small AgentsPage-local toolbar if Header is too generic).
+  - `apps/web/src/lib/api.ts` — add `api.teamMembers.create(payload)`, `api.teamMembers.uploadAvatar(file, username)`.
+  - `apps/web/src/hooks/useTeamMembers.ts` — extend with `useCreateTeamMember()`, `useUploadAvatar()`.
+  - `apps/web/server/teamMemberRepo.ts` — extend with `createTeamMember(ownerId, payload)` if not present (verify S12 surface first).
+  - `apps/web/server/routes.ts` (or the team-members route file) — add `POST /api/team-members` and `POST /api/team-members/:username/avatar` (multipart upload). Owner-scoped.
+  - `apps/web/server/avatarStorage.ts` — NEW. File-system writer for `.claude/agents/avatars/{username}.{ext}`. Validation: MIME type allowlist, size limit, username regex, owner-scope check (the owner_id derived from session must match the team_member's owner_id).
+  - `apps/web/migrations/NNNN_team_members_avatar.sql` — NEW migration. Adds `avatar_path TEXT NULL` to `team_members`. (Verified 2026-05-22: Sprint 12's `0027_team_members.sql` did NOT include this column; T2 must add it.) Reversible via column drop.
+  - Vite static-serve config: ensure `.claude/agents/avatars/` is served as static under a known prefix during dev (`/avatars/{username}.{ext}` → file). Production routing is out of scope (this is a local-dev product per Sprint 12 framing).
+  - Tests: `tests/teamMembersEmptyState.test.tsx`, `tests/addTeamMemberForm.test.tsx`, `tests/teamMemberAvatar.test.ts` (Miniflare D1, no mocks; mock fs writes via in-memory fs adapter).
+  - Playwright E2E: `tests/agents/empty-state.spec.ts` — zero-state → "Add backlog items" → board created → backlog renders.
+- **Migration Safety:** Reversible — `avatar_path` is a nullable TEXT column. Drop column to roll back. Avatar files on disk are not deleted on rollback (they're outside the DB lifecycle by design).
+- **Security Review:** **AUTH-adjacent + FS-adjacent.** Avatar upload writes to the local filesystem outside `apps/web/`. Hard rules: (a) `{username}` sanitized against `^[a-z0-9_-]+$`; (b) MIME allowlist `image/(png|jpeg|jpg|webp)`; (c) size limit 1 MB; (d) owner-scope check — caller's owner_id must match `team_members.owner_id`; (e) the avatar route does NOT accept arbitrary paths — only `{username}` from URL → derived filename. Tim acceptance traces to the Sprint 13 locked decisions.
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s13-t2-empty-state-add-agent track/s13-t2-empty-state-add-agent`
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — all green (lefthook chain).
+2. **Empty-state render:** new owner with zero team_members and zero boards → AgentsPage shows the empty-state header + two CTAs.
+3. **Auto-create-default-board flow:** click "Add backlog items" → board "Default board" appears in `api.boards.list()` → browser routes to `/boards/:newBoardId/backlog` → BacklogPage renders.
+4. **Custom form:** open "Add team member" → all Agent-OS template fields visible (`display_name`, `role`, `bio`, `soul`, `capabilities`, `handoff_to`, `skills`) → no `username`/`runtime`/`model`/crypto fields visible.
+5. **Avatar upload happy path:** select a 200KB PNG → upload completes → `team_members.avatar_path` row updated → file written to `.claude/agents/avatars/{username}.png` → AgentsPage renders the uploaded avatar in the team-member card.
+6. **Path-traversal sentinel:** attempt to upload with `username` of `../../etc/passwd` (manual curl test) → endpoint rejects with 400.
+7. **Size-limit sentinel:** attempt to upload a 2MB image → endpoint rejects with 413.
+8. Playwright E2E `tests/agents/empty-state.spec.ts` green.
+9. Bandit QA — confirm path-traversal hardening, MIME allowlist, owner-scope check, size limit.
+
+**Next Step:** Skylar — wait for S13-T1 to merge to `main`. Read the post-T1 `AgentsPage.tsx` and `TeamCard.tsx` first. Read `packages/shared/src/templates.ts` for `BUILTIN_TEAM_MEMBERS`, `apps/web/server/teamMemberRepo.ts` for repo conventions, and `apps/web/src/routes/BacklogPage.tsx` to confirm the route shape. Verify whether `team_members.avatar_path` column already exists from Sprint 12 (read latest migration) before adding a new one. Build the empty-state branch first, then auto-create-default-board flow, then the custom form + avatar upload. Run the seven-step verification matrix (path-traversal and size-limit checks are mandatory, not optional). Invoke Bandit.
+
+---
+
+### HANDOFF BRIDGE — S13-T3
+**Topic:** Navigation consolidation — fold Machines into Settings as "Daemon connection" tab, remove Machines top-nav, drop Repositories from profile menu, move theme toggle into profile menu, add Settings → Labels tab
+**Track:** S13-T3
+**Specialist:** Skylar
+**Static DNA Check:** Aligned — pure frontend nav refactor + new top-level Settings page hosting Profile/Account/Labels/Daemon-connection tabs. No schema, no auth surface change, no new identity types. Theme toggle uses the existing `lib/theme` API. Labels tab is a STUB in this track (Tim's locked decision 2026-05-22 — global labels promotion is a separate Sprint 15 candidate).
+**Dynamic DNA State:**
+- **Product Context:** Top nav has accreted a "Machines" entry that is really a daemon-onboarding surface — not something a user navigates to during normal kanban use. Profile menu has a redundant "Repositories" entry (repos are managed at the tenant level via CLI per CLAUDE.md UI principles — the menu entry is residue). Theme toggle currently lives in the header bar as a sibling of the avatar dropdown trigger; consolidating it into the profile menu cleans up the header. Settings needs a top-level home with tabs (Profile, Account, Labels, Daemon connection) so workspace-level affordances live in one place.
+- **Login/SSO entry point is OUT of scope (Tim's locked decision).** Skylar must NOT add login/SSO surface in T3.
+- **Settings host: new top-level `/settings` page (Tim's locked decision 2026-05-22).** AccountSettingsPage's existing content folds into the new SettingsPage as the Profile + Account tabs.
+- **Labels tab: stub only (Tim's locked decision 2026-05-22).** Tab renders a placeholder card with copy: "Labels are currently per-board. Manage them in board settings." Optionally include a link to the active board's `/boards/:id/labels`. Global promotion (schema migration to `labels` table with `owner_id`, rewriting all label endpoints, updating consumers) is a separate Sprint 15 candidate. Skylar must NOT promote labels to global in T3.
+- **Current Plan:** Sprint 13 → S13-T3 in this file.
+- **Execution Files:**
+  - `apps/web/src/components/Header.tsx`:
+    - Line 17: remove `{ to: "/machines", label: "Machines" }` from the nav array.
+    - Profile dropdown (~line 166-256): remove the "Repositories" `DropdownMenuItem` (line 202-216 region — `navigate("/repositories")`).
+    - Move theme cycle (currently a standalone button — confirmed structure at lines 8, 20, 36, 59, 66-69, 147) into the dropdown content as a new `DropdownMenuItem` that calls `cycleTheme`. The standalone theme button leaves the header bar.
+  - `apps/web/src/routes/SettingsPage.tsx` — NEW. Top-level Settings host at `/settings`. Sidebar/tabs: Profile, Account, Labels, Daemon connection. Each tab renders a section component.
+  - `apps/web/src/routes/AccountSettingsPage.tsx` — reshape: extract its current Profile + Account content into section components (`ProfileSettingsSection.tsx`, `AccountSettingsSection.tsx`) that the new `SettingsPage` consumes. The page itself becomes a thin redirect to `/settings/account` (or removed entirely if the route shape allows).
+  - `apps/web/src/components/settings/DaemonConnectionSection.tsx` — NEW. Hosts the previous Machines content (API key + heartbeat + status). Reuses logic from `apps/web/src/routes/MachinesPage.tsx`.
+  - `apps/web/src/components/settings/LabelsSection.tsx` — NEW. STUB only. Renders a card explaining labels are currently per-board, with a link to the active board's labels page if a board is active. No CRUD UI in this track.
+  - `apps/web/src/routes/MachinesPage.tsx` — removed OR redirected to `/settings/daemon-connection`. Skylar picks the cleaner option; admin variant `routes/admin/AdminMachinesPage` is unaffected.
+  - `apps/web/src/App.tsx` — add `/settings` and `/settings/:tab` routes. Update Machines route per the redirect/delete decision (line 22 import + line 118 route element). Leave admin route at line 204 untouched.
+  - `apps/web/src/routes/RepositoriesPage.tsx` — leave the page itself; just remove the menu entry that links to it (it remains accessible via direct URL until a future track removes the page outright).
+  - Tests: vitest for Header dropdown content (Repositories absent, Theme present, Machines absent from nav), SettingsPage tab assertions (all four tabs render), DaemonConnectionSection renders prior Machines content, LabelsSection renders stub copy.
+- **Migration Safety:** N/A — no schema change. (Labels global promotion is deferred; no migration in this track.)
+- **Security Review:** N/A — no auth surface change. The Labels stub does not expose CRUD; no owner-scoping concern. The DaemonConnectionSection inherits MachinesPage's existing API-key surface; no new endpoints.
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s13-t3-nav-consolidation track/s13-t3-nav-consolidation`
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — all green (lefthook chain).
+2. **Header surface:** open any route → no "Machines" entry in top nav, no standalone theme button in the header bar.
+3. **Profile menu:** click avatar dropdown → no "Repositories" item, theme toggle present (cycles light/dark/system).
+4. **Settings page:** navigate to `/settings` → all four tabs visible (Profile, Account, Labels, Daemon connection); Daemon connection tab renders the previous Machines content; Labels tab renders the stub copy ("Labels are currently per-board.").
+5. **Login/SSO sentinel:** `git grep -i "sso\|single sign\|saml\|oidc" apps/web/src/` — no NEW additions in this PR (Skylar must not introduce login/SSO surface).
+6. **Visual proof:** screenshot of header + profile menu + Settings page attached to PR.
+7. Bandit QA — confirm scope discipline (no login/SSO added), confirm Labels tab is owner-scoped, confirm no auth surface modified.
+
+**Next Step:** Skylar — read `apps/web/src/components/Header.tsx` end-to-end (especially lines 17, 147, 166-256) to map the nav array and dropdown structure. Read `apps/web/src/routes/AccountSettingsPage.tsx` to confirm the tab structure (or shadcn Tabs equivalent in use). Read `apps/web/src/routes/MachinesPage.tsx` end-to-end before deciding whether to move-and-redirect or move-and-delete. Run `grep -rn labels apps/web/server/` to find existing labels endpoint. Edit Header first (smallest diff), then AccountSettingsPage tabs, then MachinesPage migration. Run the seven-step verification matrix (login/SSO sentinel is mandatory). Invoke Bandit.
+
+---
+
+### HANDOFF BRIDGE — S13-T4
+**Topic:** Create Board UX — auto-prefix `S{N}-{user-defined}`, relabel "Board name" → "Sprint board name" and "Theme" → "Sprint theme", remove the terminal command block (AddMachineSteps step) from the create-board flow
+**Track:** S13-T4
+**Specialist:** Skylar
+**Static DNA Check:** Aligned — pure frontend edit on `NewBoardPage.tsx` plus a tiny sprint-number lookup. No schema, no migration, no auth surface change. The `AddMachineSteps` component itself stays in the codebase (used elsewhere for daemon onboarding from Settings → Daemon connection — T3's surface). The `apiKeyDisplay`/`apiKeyId` state and the Step 1 render block are removed from `NewBoardPage.tsx` only.
+**Dynamic DNA State:**
+- **Product Context:** Today the create-board flow on `/boards/new` is a 2-step wizard: Step 0 captures name + theme + creates the board + creates an onboarding API key, Step 1 renders `AddMachineSteps` with a copyable `npx agent-kanban start --api-url ... --api-key ...` terminal command. This conflates "I want a sprint board" with "I want to spin up a daemon" — a human creating a sprint board does not need to be looking at terminal instructions. T4 removes Step 1 from this flow, relabels the fields to the sprint-centric vocabulary, and auto-prefixes the user-supplied name with the next sprint number.
+- **Daemon-spawn-at-create is OUT of scope (Tim's locked decision).** T4 leaves a TODO comment near the removed step block: `// TODO(future-track): daemon spawn-at-create flow lands separately`. Daemon onboarding remains accessible via Settings → Daemon connection (T3's surface) and via CLI.
+- **Auto-prefix `S{N}-{user-defined}`:** on submit, look up the next sprint number. The `ak sprint open` flow already auto-increments per board via `POST /api/boards/:id/sprints` (S8-T1). Pre-create, there's no board yet, so the lookup pattern is: (a) compute `name = "S{N}-{userInput}"` where `{N}` = max(sprint.number across owner) + 1, OR (b) use the simpler heuristic of "next sprint number across owner via a new tiny endpoint." Skylar's call on the cleanest implementation. **If the API doesn't expose a getNext-style endpoint, flag in the PR description; do not invent a new endpoint without surfacing.** Acceptable fallback: hard-code `S13-` for this sprint and ship a follow-up to make it dynamic if the API lookup is non-trivial — flag in PR.
+- **Current Plan:** Sprint 13 → S13-T4 in this file.
+- **Execution Files:**
+  - `apps/web/src/routes/NewBoardPage.tsx` — primary edit. Confirmed structure (82 lines):
+    - Line 17-18: `apiKeyDisplay`/`apiKeyId` state — remove (no longer needed in this page).
+    - Line 22-34: `handleCreateBoard` — remove the api-key creation block (lines 26-32) and the `setStep(1)` call (line 33). After board create, call `navigate(\`/boards/${board.id}\`)` directly.
+    - Line 53-57: step indicator dots `[0, 1].map(...)` — remove (single-step now).
+    - Line 59: `{step === 0 && (...)}` — drop the conditional; render the form unconditionally.
+    - Line 61: "Board name" label → "Sprint board name".
+    - Line 63: "Theme" label → "Sprint theme".
+    - Line 62 input: prefix display the auto-generated `S{N}-` portion (read-only chip in front of the input, OR concatenate on submit only — Skylar's call). On submit, `name = \`S${nextN}-${boardName}\``.
+    - Line 77: `{step === 1 && apiKeyDisplay && apiKeyId && <AddMachineSteps ... />}` — remove entirely. Replace with: `// TODO(future-track): daemon spawn-at-create flow lands separately`.
+    - `import { AddMachineSteps } from "../components/AddMachineSteps";` (line 3) — remove.
+    - `useState(0)` for `step` — remove if no longer used after the conditional drop.
+  - `apps/web/src/components/AddMachineSteps.tsx` — DO NOT delete. Component stays in the codebase (used by Settings → Daemon connection per T3 and any other daemon-onboarding surface). Run `grep -rn AddMachineSteps apps/web/src/` before any deletion decision.
+  - `apps/web/src/lib/api.ts` — if a getNext-sprint endpoint exists, no edit needed; if Skylar adds one, expose `api.sprints.getNextNumber()` here.
+  - Tests: `tests/newBoardPage.test.tsx` — assert single-step flow, "Sprint board name"/"Sprint theme" labels render, no `AddMachineSteps` invocation, name on submit is `S{N}-{userInput}`.
+  - Playwright E2E: `tests/board/create-board.spec.ts` — fill form → submit → land on `/boards/:id` (not on a step-1 wizard).
+- **Migration Safety:** N/A — no schema change.
+- **Security Review:** N/A — no auth surface change. The api-key creation moves out of this flow; verify it still happens in the Settings → Daemon connection path (T3's surface) before merge so daemon onboarding is not broken end-to-end. Coordinate with T3.
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s13-t4-create-board-ux track/s13-t4-create-board-ux`
+
+**Verification:**
+1. `pnpm build && pnpm tsc --noEmit && npx vitest run` — all green (lefthook chain).
+2. **Surface check:** navigate to `/boards/new` → single-step form, "Sprint board name" + "Sprint theme" labels, no terminal command block, no Step 1 wizard.
+3. **Submit happy path:** type "UX Polish" → submit → board created with name "S13-UX Polish" (or whatever the auto-prefix resolves to) → browser routes to `/boards/:id` directly.
+4. **Daemon-onboarding sentinel:** confirm `AddMachineSteps` component still exists in the codebase and is referenced from the Settings → Daemon connection surface (T3) — coordinate with T3.
+5. **TODO comment present:** `git grep "TODO(future-track): daemon spawn-at-create" apps/web/src/routes/NewBoardPage.tsx` returns one match.
+6. **Visual proof:** screenshot of the new create-board form attached to PR.
+7. Bandit QA — confirm `AddMachineSteps` component preserved, confirm no daemon spawn logic added (out of scope), confirm sprint-number lookup is sensible (or flagged for follow-up).
+
+**Next Step:** Skylar — read `apps/web/src/routes/NewBoardPage.tsx` end-to-end first. Read `apps/web/src/components/AddMachineSteps.tsx` to confirm it has consumers outside this page (run `grep -rn AddMachineSteps apps/web/src/`). Read `packages/cli/src/commands/sprint.ts` and `apps/web/server/sprintRepo.ts` for the existing sprint-number logic. If a getNext-sprint endpoint exists, use it; if not, flag in PR and either add a tiny endpoint or hard-code `S13-` with a follow-up note. Edit NewBoardPage; verify AddMachineSteps still works on its other surfaces (T3 coordination); leave the TODO comment. Run the seven-step verification matrix. Invoke Bandit.
+
+---
+
+### HANDOFF BRIDGE — S13-S1 (Stretch)
+**Topic:** `pnpm dev` auto-open one-liner — `server.open: true` in `apps/web/vite.config.ts`
+**Track:** S13-S1 (stretch — zero merge requirement)
+**Specialist:** Skylar
+**Static DNA Check:** Aligned — single-line config change. No schema, no auth, no source code. Reversible.
+**Dynamic DNA State:**
+- **Product Context:** Tim flagged that "viewing the kanban board should be as easy as running one command." Vite supports auto-open natively via `server.open: true`. Tiny one-line change.
+- **Current Plan:** Sprint 13 → S13-S1 in this file.
+- **Execution Files:**
+  - `apps/web/vite.config.ts` — add `server: { open: true }` (or merge into the existing `server` block if present).
+- **Migration Safety:** N/A — config edit, fully reversible.
+- **Security Review:** N/A — local-dev only; no production impact.
+
+**Worktree Setup:** `bash scripts/worktree-add.sh .worktrees/s13-s1-vite-auto-open track/s13-s1-vite-auto-open` (or fold into whichever close-gate worktree lands first if S1 is opportunistic).
+
+**Verification:**
+1. `pnpm dev` — browser opens to the local URL once the server is ready.
+2. `git diff apps/web/vite.config.ts` — single-line addition (or small block addition if `server` block doesn't exist).
+3. No Bandit required (config-only, no code surface) — Tim review on the one-line diff is sufficient.
+
+**Next Step:** Skylar — read `apps/web/vite.config.ts`, add `server: { open: true }`, run `pnpm dev` to confirm the auto-open. Zero merge requirement; if S1 doesn't open as its own PR, fold the one line into whichever close-gate track lands first. No Bandit invocation needed.
 
 ---
 
