@@ -1,7 +1,7 @@
 ---
 name: bandit
 description: QA and quality gate. Read-only — runs build checks, audits diffs, and issues a PASS or BLOCKED verdict. No track is complete until Bandit approves.
-model: claude-sonnet-4-6
+model: sonnet
 tools:
   - Read
   - Bash

@@ -1,26 +1,35 @@
 # Agent Kanban — Active Tracks
 
-## Current Sprint: None — Sprint 13 CLOSED 2026-05-23; Sprint 14 not yet opened
+## Current Sprint: Sprint 15 — Agent OS Remediation (OPEN 2026-05-23)
+
+| Track  | Goal                                                                                                                                                                                                                                                                                                          | Type            | Owner                | Status        |
+|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|----------------------|---------------|
+| S15-T1 | agent-kanban config fixes — install canonical skills (`open-sprint`, `report-track-status`, `minify-context`); rewire CLAUDE.md auto-triggers; create `docs/context/product.md`; correct AGENTIC.md §5 board task auth/endpoint; normalize `bandit.md` model to `sonnet`                                       | Code close-gate | Skylar                | DONE — Bandit PASS, merged 2026-05-23 |
+| S15-T2 | plan.md context migration — archive S1–S13 to `docs/context/archive/plan-archive-s1-s13.md`, archive S14 to `docs/context/archive/plan-s14-diagnostic.md`, leave `plan.md` with current sprint only; create `docs/context/handoffs/` for current/future bridges; update `peaches.md` init to reference archive | Code close-gate | Skylar (worktree)     | Bridge issued — Tim approval required (irreversible) |
+| S15-T3 | Agent OS upstream issue report — clean external-facing bug/improvement report at `docs/context/findings/s14-agent-os-upstream-report.md` covering 5 canonical-install gaps from findings §6                                                                                                                   | Paper           | Peaches (no Skylar)   | DONE — authored 2026-05-23 |
+
+See `docs/context/plan.md § Current Sprint: Sprint 15` for objective, dependencies, DoD, and circuit-breaker risk.
+
+**Board tasks:** Tim creates S15-T1/T2/T3 manually in the browser before Skylar begins (machine tokens cannot create tasks — this is one of the bugs T1 fixes).
+
+---
+
+## Archive: Sprint 14 — Agent OS Install Diagnostic (CLOSED 2026-05-23)
+
+| Track  | Goal                                                                                              | Type        | Status                                                                  |
+|--------|---------------------------------------------------------------------------------------------------|-------------|-------------------------------------------------------------------------|
+| S14-D1 | Subagent loader diagnosis — frontmatter delta + load-contract test for team agents vs playwright | Diagnostic  | DONE — finding written in `docs/context/findings/s14-agent-os-diagnostic.md` §3, §5 Gap 6 |
+| S14-D2 | Skill install audit — `start-sprint` vs `/sprint-open` mismatch, flat-.md vs directory layer     | Diagnostic  | DONE — finding written §3 (Skills table), §5 Gap 1 + 2                   |
+| S14-D3 | Canonical install comparison — side-by-side delta against project-tracker reference              | Diagnostic  | DONE — finding written §1, §2, §4 (Delta Table)                          |
+| S14-D4 | Looseness attribution — re-rate six structural causes against current main                       | Diagnostic  | DONE — finding written §5 + §6 (canonical install gaps)                  |
+
+**Output:** Single findings document at `docs/context/findings/s14-agent-os-diagnostic.md`. All four diagnostic tracks contributed sections; sprint closed when Tim accepted the doc on 2026-05-23. Sprint 15 (this sprint) is the remediation.
 
 ---
 
 ## Future Backlog
 
-### Sprint 14 (planned) — Agent OS install diagnostic
-
-A dedicated investigation sprint following S13 close. Goal: determine whether the Agent OS install on this fork was successful, and if not, identify where it went wrong. Investigation only — no code changes. Outcomes inform Sprint 15 scope.
-
-Surfacing questions for the diagnostic (preliminary, not exhaustive):
-- Why don't `.claude/agents/peaches.md|skylar.md|bandit.md` load as `subagent_type` invocations on this fork, while `playwright-test-*` agents in the same directory do?
-- Is the install of `~/.claude/skills/start-sprint.md` and the missing `/sprint-open` skill a symptom of the same root cause, or independent?
-- What does the canonical Agent OS install produce that we're missing here?
-- Is the looseness named in [[execution-tightness-gaps]] explained by install drift, or is it independent?
-
-Reference memory: [[agent-os-role-drift-investigation]].
-
-### Sprint 15 (provisional) — Carry-forward from S11/S12 + previously-S14
-
-Items deferred from Sprint 12's original plan and re-deferred from the previously-named-S14 (now S15 because S14 is the diagnostic). Will be re-prioritized after the S14 diagnostic lands. Some may become moot or reshape based on diagnostic findings.
+### Carry-forward (deferred from Sprint 12+; some absorbed into S15)
 
 - **`/sprint-open` skill** (was S12-T3) — project-level skill mirroring `/close-sprint`. Symmetric gap surfaced when `/close-sprint` referenced it.
 - **Env hygiene combo** (was S12-T4) — (a) diagnose + fix `prepare: lefthook install` failure on `pnpm install --frozen-lockfile`; (b) extend `json_query` redaction filter (`refresh_token` + `x-api-key`).
@@ -39,7 +48,7 @@ Items deferred from Sprint 12's original plan and re-deferred from the previousl
 
 ---
 
-*Last updated: 2026-05-23 (Sprint 13 CLOSED; Sprint 14 = Agent OS install diagnostic, not yet opened.)*
+*Last updated: 2026-05-23 (Sprint 14 CLOSED — diagnostic delivered as `docs/context/findings/s14-agent-os-diagnostic.md`. Sprint 15 OPENED — Agent OS Remediation, three tracks: T1 config fixes, T2 plan.md migration, T3 upstream report. T2 is irreversible — Tim approval required before Skylar begins.)*
 
 ---
 

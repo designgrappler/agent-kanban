@@ -92,7 +92,7 @@ git worktree remove .worktrees/track-N
 - **Sentinel Proof:** Never trust an agent's verbal summary. Verify with `git diff` or direct file reads.
 
 ### Handoff Logic
-- **Phase 0 (Board Setup):** Before issuing any Handoff Bridge, create a board task for the track via `POST /api/boards/:id/tasks`. Discover the active board ID via `ak get board -o json`. Title format: `T<N>: <track short description>`. Description: one sentence from the track goal. Status: `todo`. The board is the authoritative source of truth — a track without a board task does not exist.
+- **Phase 0 (Board Setup):** Before issuing any Handoff Bridge, create a board task for the track via `POST /api/tasks` (with `board_id` in the request body). Discover the active board ID via `ak get board -o json`. Title format: `T<N>: <track short description>`. Description: one sentence from the track goal. Status: `todo`. Note: machine tokens (`AK_TOKEN`) cannot create tasks — task creation requires a user browser session or an `agent:worker`/`agent:leader` JWT. If only machine credentials are available, create the board task manually from the browser before issuing the Bridge. The board is the authoritative source of truth — a track without a board task does not exist.
 - **Phase 1 (Verify):** Downstream specialist verifies upstream interface before any implementation begins.
 - **Phase 2 (Align):** Synchronize with `AGENTIC.md` and `tracks.md`.
 - **Phase 3 (Draft):** Architect drafts implementation plan.
@@ -102,11 +102,11 @@ git worktree remove .worktrees/track-N
 
 When Peaches opens a new sprint:
 
-1. **Board first.** For each track in the sprint, call `POST /api/boards/:id/tasks` to create a board task before issuing any Handoff Bridges. Discover the board ID via `ak get board -o json`. Title: `T<N>: <short description>`. Description: one sentence stating the track goal. Status: `todo`.
+1. **Board first.** For each track in the sprint, call `POST /api/tasks` (with `board_id` in the request body) to create a board task before issuing any Handoff Bridges. Discover the board ID via `ak get board -o json`. Title: `T<N>: <short description>`. Description: one sentence stating the track goal. Status: `todo`. Note: machine tokens (`AK_TOKEN`) cannot create tasks — task creation requires a user browser session or an `agent:worker`/`agent:leader` JWT. If only machine credentials are available, create board tasks manually from the browser before proceeding.
 2. **1:1 mapping.** Every track maps to exactly one board task. No track exists only in `tracks.md`. No board task exists without a corresponding `tracks.md` entry.
 3. **Board is authoritative.** The kanban board is the sprint's source of truth for work status. `plan.md` and `tracks.md` remain planning artifacts but are subordinate to the board.
 4. **Retroactive fix rule.** If a Handoff Bridge is issued without a board task (due to error or interruption), the board task must be created before Skylar begins work — not after.
-5. **API auth.** Board task creation uses the existing machine token (`AK_TOKEN`) — the same credential used by the daemon. No browser session needed.
+5. **API auth.** Board task creation requires a user browser session or an `agent:worker`/`agent:leader` JWT. Machine tokens (`AK_TOKEN`) cannot create tasks — use the browser when only machine credentials are available.
 
 ---
 

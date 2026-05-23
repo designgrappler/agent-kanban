@@ -144,5 +144,5 @@ Invoke the following skills automatically when the user's message matches these 
 
 | User says... | Invoke |
 |---|---|
-| "start planning", "new sprint", "let's plan", "begin planning", "what are we working on next" | `/sprint-open` |
-| "catch me up", "what's the status", "where are we", "status check", "quick update" | `/track-status` |
+| "start planning", "new sprint", "let's plan", "begin planning", "what are we working on next" | `/open-sprint` |
+| "catch me up", "what's the status", "where are we", "status check", "quick update" | `/report-track-status` |
