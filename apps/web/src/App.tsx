@@ -1,6 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useSession } from "./lib/auth-client";
-import { AccountSettingsPage } from "./routes/AccountSettingsPage";
 import { AgentDetailPage } from "./routes/AgentDetailPage";
 import { AgentEditPage } from "./routes/AgentEditPage";
 import { AgentNewPage } from "./routes/AgentNewPage";
@@ -24,6 +23,7 @@ import { MockChatPage } from "./routes/MockChatPage";
 import { NewBoardPage } from "./routes/NewBoardPage";
 import { OnboardingPage } from "./routes/OnboardingPage";
 import { RepositoriesPage } from "./routes/RepositoriesPage";
+import { SettingsPage } from "./routes/SettingsPage";
 import { SharePage } from "./routes/SharePage";
 import { TeamMemberDetailPage } from "./routes/TeamMemberDetailPage";
 
@@ -187,7 +187,7 @@ export function App() {
           path="/settings/*"
           element={
             <ProtectedRoute>
-              <AccountSettingsPage />
+              <SettingsPage />
             </ProtectedRoute>
           }
         />
