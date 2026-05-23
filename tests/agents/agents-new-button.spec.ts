@@ -1,11 +1,16 @@
 // spec: specs/agent-kanban.plan.md
 // section: 7.4 'New agent' button navigates to agent creation page
+// NOTE: S13-T1 removed the "New agent" button from AgentsPage entirely. The /agents/new route
+// still exists but there is no longer a link to it from the team members listing page.
+// Marked fixme until a new entry point is added or this feature is retired.
 
 import { expect, test } from "@playwright/test";
 import { signUpAndGetBoard } from "../helpers/auth";
 
 test.describe("Agents Page", () => {
-  test("'New agent' button navigates to agent creation page", async ({ page }) => {
+  // S13-T1 removed the "New agent" button from AgentsPage. There is no longer a link
+  // to /agents/new from the team members listing page.
+  test.fixme("'New agent' button navigates to agent creation page", async ({ page }) => {
     // 1. Sign in, navigate to /agents, and click the 'New agent' button
     await signUpAndGetBoard(page, `agents_newbtn_${Date.now()}@example.com`);
     await page.goto("/agents");

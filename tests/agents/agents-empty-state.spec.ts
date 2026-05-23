@@ -1,28 +1,24 @@
 // spec: specs/agent-kanban.plan.md
-// section: 7.1 Agents page renders empty state when no agents exist
-// NOTE: The app always provisions a built-in "Quality Goalkeeper" agent for every new user,
-// so the empty state ("No agents yet.") is not reachable in practice.
-// This test verifies the agents page heading, "New agent" button, and the grid of agent cards
-// that is shown for a fresh user (with only the built-in agent present).
+// section: 7.1 Agents page (now "Team members") renders built-in team members
+// NOTE: S13-T1 renamed the page from "Agents" to "Team members", removed the "New agent" button,
+// removed the Workers section, and replaced AgentCards with TeamCards for built-in team members
+// (Peaches, Skylar, Bandit). The empty state ("No team members yet.") is not reachable in
+// practice because built-in members are always seeded on account creation.
 
 import { expect, test } from "@playwright/test";
 import { signUpAndGetBoard } from "../helpers/auth";
 
 test.describe("Agents Page", () => {
-  test("Agents page renders empty state when no agents exist", async ({ page }) => {
-    // 1. Sign in as a user with no agents and navigate to /agents
+  test("Team members page renders heading and built-in team member cards", async ({ page }) => {
+    // 1. Sign in as a new user and navigate to /agents
     await signUpAndGetBoard(page, `agents_empty_${Date.now()}@example.com`);
     await page.goto("/agents");
 
-    // expect: Heading 'Agents' is displayed
-    await expect(page.getByRole("heading", { name: "Agents" })).toBeVisible();
+    // expect: Heading 'Team members' is displayed (renamed from 'Agents' in S13-T1)
+    await expect(page.getByRole("heading", { name: "Team members" })).toBeVisible();
 
-    // expect: A 'New agent' button is visible
-    await expect(page.getByRole("link", { name: "New agent" })).toBeVisible();
-
-    // NOTE: A built-in agent always exists, so we verify the page loads correctly.
-    // The "No agents yet." state cannot be reached in the current implementation.
-    await page.getByText("Quality Goalkeeper").first().waitFor({ state: "visible" });
-    await expect(page.getByText("Quality Goalkeeper").first()).toBeVisible();
+    // expect: Built-in team member "peaches" is visible (seeded on every new account)
+    await page.getByText("peaches").first().waitFor({ state: "visible" });
+    await expect(page.getByText("peaches").first()).toBeVisible();
   });
 });
