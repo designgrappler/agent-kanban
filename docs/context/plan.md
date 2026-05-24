@@ -16,9 +16,9 @@ This sprint deliberately scopes the backlog feature **without** server-side LLM 
 
 | Track  | Goal                                                                                                                                                                                                                                                                                                                                                | Type            | Owner             | Status     |
 |--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|-------------------|------------|
-| S16-T1 | Backlog data model + repo + API — additive `backlog_items` migration (per north-star.md §Data Model), `backlogItemRepo.ts`, REST endpoints under `/api/backlog-items` (list, create, update, delete, bulk-mark-in-planning) scoped to `board_id`, owner-scoped via existing auth middleware. Schema is additive; no changes to `tasks`, `boards`, or auth. | Code close-gate | Skylar (worktree) | Pending    |
-| S16-T2 | Backlog tab UI + planning trigger — new `/boards/:id/backlog` route with priority-grouped list, multi-select checkboxes, create/edit/delete affordances for `idea` items, **Create plan** button that builds the prompt from `north-star.md § Planning Trigger Flow` and copies to clipboard (file-write deferred). DESIGN.md compliance required.   | Code close-gate | Skylar (worktree) | Pending — depends on T1 API |
-| S16-T3 | Daemon spawn-at-create — when a new board is created and the user has a registered machine, prompt to start the daemon and (on confirm) shell out to the same flow `ak start` uses. Closes the TODO left by S13-T4 in the create-board flow. No changes to daemon internals; only the UI/CLI handoff.                                              | Code close-gate | Skylar (worktree) | Pending    |
+| S16-T1 | Backlog data model + repo + API — additive `backlog_items` migration (per north-star.md §Data Model), `backlogItemRepo.ts`, REST endpoints under `/api/backlog-items` (list, create, update, delete, bulk-mark-in-planning) scoped to `board_id`, owner-scoped via existing auth middleware. Schema is additive; no changes to `tasks`, `boards`, or auth. | Code close-gate | Skylar (worktree) | DONE — Bandit PASS, merged 2026-05-23 |
+| S16-T2 | Backlog tab UI + planning trigger — new `/boards/:id/backlog` route with priority-grouped list, multi-select checkboxes, create/edit/delete affordances for `idea` items, **Create plan** button that builds the prompt from `north-star.md § Planning Trigger Flow` and copies to clipboard (file-write deferred). DESIGN.md compliance required.   | Code close-gate | Skylar (worktree) | DONE — Bandit PASS, merged 2026-05-23 |
+| S16-T3 | Daemon spawn-at-create — when a new board is created and the user has a registered machine, prompt to start the daemon and (on confirm) shell out to the same flow `ak start` uses. Closes the TODO left by S13-T4 in the create-board flow. No changes to daemon internals; only the UI/CLI handoff.                                              | Code close-gate | Skylar (worktree) | DONE — Bandit PASS, merged 2026-05-23 |
 | S16-S1 | Env hygiene combo (stretch, deferred from S12-T4) — (a) diagnose + fix `prepare: lefthook install` failure on `pnpm install --frozen-lockfile`; (b) extend `json_query` redaction filter (`refresh_token` + `x-api-key`).                                                                                                                          | Stretch         | Skylar (capacity) | Stretch — no bridge; pick up if T1/T2/T3 land early |
 
 ### Dependency Order
@@ -35,31 +35,31 @@ T1 must land (or at minimum the API contract must be stable in a worktree Skylar
 
 ### Definition of Done
 
-- [ ] **S16-T1 (backlog data + API):**
-  - [ ] Migration file `apps/web/migrations/<NNNN>_backlog_items.sql` adds the `backlog_items` table per `north-star.md § Data Model` (id, board_id FK, title, description, priority, status, created_at, created_by, consumed_by_sprint_id NULL FK — though sprints table doesn't exist yet, leave the column nullable with no FK constraint; document that the FK lands when `sprints` table arrives).
-  - [ ] `apps/web/server/repos/backlogItemRepo.ts` with `list({board_id, owner_id})`, `get(id, owner_id)`, `create`, `update`, `delete`, `bulkMarkInPlanning(ids[])`.
-  - [ ] Routes mounted at `apps/web/server/routes/backlogItems.ts` and registered in the main router. Endpoints: `GET /api/backlog-items?board_id=`, `POST /api/backlog-items`, `PATCH /api/backlog-items/:id`, `DELETE /api/backlog-items/:id`, `POST /api/backlog-items/bulk-mark-in-planning`.
-  - [ ] All endpoints owner-scoped and auth-gated (user session OR `agent:worker`/`agent:leader` JWT — same model as tasks). Machine tokens may read but not write (mirrors task creation rule).
-  - [ ] Vitest coverage in `tests/backlogItems.test.ts` — happy path + auth deny + cycle prevention not applicable (no FK to self).
-  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` clean.
-  - [ ] Bandit PASS.
-- [ ] **S16-T2 (backlog tab UI):**
-  - [ ] DESIGN.md read first; visual decisions match the existing kanban aesthetic (font, color, spacing).
-  - [ ] New route `/boards/:id/backlog` rendered via existing router; tab linked from board view header next to Tracks.
-  - [ ] Priority-grouped list (P0 → P3) with multi-select checkboxes per item.
-  - [ ] Create/edit/delete affordances visible **only** for items with `status = idea` (mirrors the locked-once-claimed rule from CLAUDE.md UI principles).
-  - [ ] **Create plan** button bulk-marks selected items to `in_planning` via `POST /api/backlog-items/bulk-mark-in-planning`, builds the prompt from `north-star.md § Planning Trigger Flow` step 3, and copies it to the clipboard. File-write delivery is deferred.
-  - [ ] Playwright E2E spec covering: add backlog item, edit, delete, multi-select + Create plan triggers status transition + clipboard write.
-  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` clean.
-  - [ ] Bandit PASS.
-- [ ] **S16-T3 (daemon spawn-at-create):**
-  - [ ] After successful board create, if the user has at least one registered machine, show a non-blocking modal: "Start the daemon now?" with a Start button.
-  - [ ] On Start, the UI displays the exact `ak start --board <id>` command and a one-click "copy to clipboard" affordance. (No browser-side spawning of local processes — that's not possible from a Worker-served SPA. The copy-and-paste handoff fulfills the S13-T4 TODO without crossing the browser↔OS boundary.)
-  - [ ] If the user has zero registered machines, the modal links to Settings → Daemon connection (the S13-T3 location) instead of to start.
-  - [ ] Vitest coverage in `tests/createBoardDaemonHandoff.test.tsx` — both branches (has machine / no machine).
-  - [ ] Playwright E2E spec adds a step to existing create-board flow.
-  - [ ] `pnpm build && pnpm tsc --noEmit && npx vitest run` clean.
-  - [ ] Bandit PASS.
+- [x] **S16-T1 (backlog data + API):**
+  - [x] Migration file `apps/web/migrations/<NNNN>_backlog_items.sql` adds the `backlog_items` table per `north-star.md § Data Model` (id, board_id FK, title, description, priority, status, created_at, created_by, consumed_by_sprint_id NULL FK — though sprints table doesn't exist yet, leave the column nullable with no FK constraint; document that the FK lands when `sprints` table arrives).
+  - [x] `apps/web/server/repos/backlogItemRepo.ts` with `list({board_id, owner_id})`, `get(id, owner_id)`, `create`, `update`, `delete`, `bulkMarkInPlanning(ids[])`.
+  - [x] Routes mounted at `apps/web/server/routes/backlogItems.ts` and registered in the main router. Endpoints: `GET /api/backlog-items?board_id=`, `POST /api/backlog-items`, `PATCH /api/backlog-items/:id`, `DELETE /api/backlog-items/:id`, `POST /api/backlog-items/bulk-mark-in-planning`.
+  - [x] All endpoints owner-scoped and auth-gated (user session OR `agent:worker`/`agent:leader` JWT — same model as tasks). Machine tokens may read but not write (mirrors task creation rule).
+  - [x] Vitest coverage in `tests/backlogItems.test.ts` — happy path + auth deny + cycle prevention not applicable (no FK to self).
+  - [x] `pnpm build && pnpm tsc --noEmit && npx vitest run` clean.
+  - [x] Bandit PASS.
+- [x] **S16-T2 (backlog tab UI):**
+  - [x] DESIGN.md read first; visual decisions match the existing kanban aesthetic (font, color, spacing).
+  - [x] New route `/boards/:id/backlog` rendered via existing router; tab linked from board view header next to Tracks.
+  - [x] Priority-grouped list (P0 → P3) with multi-select checkboxes per item.
+  - [x] Create/edit/delete affordances visible **only** for items with `status = idea` (mirrors the locked-once-claimed rule from CLAUDE.md UI principles).
+  - [x] **Create plan** button bulk-marks selected items to `in_planning` via `POST /api/backlog-items/bulk-mark-in-planning`, builds the prompt from `north-star.md § Planning Trigger Flow` step 3, and copies it to the clipboard. File-write delivery is deferred.
+  - [x] Playwright E2E spec covering: add backlog item, edit, delete, multi-select + Create plan triggers status transition + clipboard write.
+  - [x] `pnpm build && pnpm tsc --noEmit && npx vitest run` clean.
+  - [x] Bandit PASS.
+- [x] **S16-T3 (daemon spawn-at-create):**
+  - [x] After successful board create, if the user has at least one registered machine, show a non-blocking modal: "Start the daemon now?" with a Start button.
+  - [x] On Start, the UI displays the exact `ak start --board <id>` command and a one-click "copy to clipboard" affordance. (No browser-side spawning of local processes — that's not possible from a Worker-served SPA. The copy-and-paste handoff fulfills the S13-T4 TODO without crossing the browser↔OS boundary.)
+  - [x] If the user has zero registered machines, the modal links to Settings → Daemon connection (the S13-T3 location) instead of to start.
+  - [x] Vitest coverage in `tests/createBoardDaemonHandoff.test.tsx` — both branches (has machine / no machine).
+  - [x] Playwright E2E spec adds a step to existing create-board flow.
+  - [x] `pnpm build && pnpm tsc --noEmit && npx vitest run` clean.
+  - [x] Bandit PASS.
 - [ ] **S16-S1 (env hygiene, stretch):**
   - [ ] If shipped: lefthook prepare fix verified by `pnpm install --frozen-lockfile` clean run; `json_query` redaction extended to filter `refresh_token` and `x-api-key`.
   - [ ] If not shipped: explicitly noted in close-sprint commentary.
