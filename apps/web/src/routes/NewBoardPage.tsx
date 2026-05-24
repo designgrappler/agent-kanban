@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { DaemonHandoffModal } from "../components/board/DaemonHandoffModal";
 import { Header } from "../components/Header";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 import { useCreateBoard } from "../hooks/useBoard";
+import { useMachines } from "../hooks/useMachines";
 import { api } from "../lib/api";
 
 export function NewBoardPage() {
@@ -12,7 +14,9 @@ export function NewBoardPage() {
   const [boardName, setBoardName] = useState("My Board");
   const [boardTheme, setBoardTheme] = useState("");
   const [error, setError] = useState("");
+  const [handoffModal, setHandoffModal] = useState<{ open: boolean; boardId: string }>({ open: false, boardId: "" });
   const createBoard = useCreateBoard();
+  const { machines } = useMachines();
 
   async function handleCreateBoard() {
     setError("");
@@ -20,11 +24,16 @@ export function NewBoardPage() {
       const { next_number } = await api.sprints.getNextNumber();
       const prefixedName = `S${next_number}-${boardName.trim()}`;
       const board = await createBoard.mutateAsync({ name: prefixedName, type: "dev", theme: boardTheme || undefined });
-      navigate(`/boards/${board.id}`, { replace: true });
-      // TODO(future-track): daemon spawn-at-create flow lands separately
+      setHandoffModal({ open: true, boardId: board.id });
     } catch {
       setError("Failed to create board. Please try again.");
     }
+  }
+
+  function handleModalClose() {
+    const boardId = handoffModal.boardId;
+    setHandoffModal((prev) => ({ ...prev, open: false }));
+    navigate(`/boards/${boardId}`, { replace: true });
   }
 
   return (
@@ -56,6 +65,8 @@ export function NewBoardPage() {
           </div>
         </div>
       </div>
+
+      <DaemonHandoffModal open={handoffModal.open} onClose={handleModalClose} boardId={handoffModal.boardId} machines={machines} />
     </div>
   );
 }

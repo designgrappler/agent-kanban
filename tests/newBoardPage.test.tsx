@@ -27,6 +27,13 @@ vi.mock("../apps/web/src/hooks/useBoard", async (importOriginal) => {
   };
 });
 
+// Stub useMachines to avoid needing QueryClientProvider
+vi.mock("../apps/web/src/hooks/useMachines", () => ({
+  useMachines: () => ({ machines: [], loading: false, refresh: vi.fn() }),
+  useMachine: () => ({ machine: null, loading: false, refresh: vi.fn() }),
+  useDeleteMachine: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
 const mockGetNextNumber = vi.fn();
 vi.mock("../apps/web/src/lib/api", () => ({
   api: {
@@ -86,8 +93,8 @@ describe("NewBoardPage", () => {
     await renderPage();
     // AddMachineSteps shows a "Waiting for connection..." message
     expect(screen.queryByText(/Waiting for connection/i)).toBeNull();
-    // And a terminal command block
-    expect(screen.queryByText(/npx|ak start/i)).toBeNull();
+    // And a terminal command block (npx is from legacy AddMachineSteps; ak start only appears in modal if machines exist)
+    expect(screen.queryByText(/npx/i)).toBeNull();
   });
 
   it("pre-fills board name with 'My Board'", async () => {
@@ -97,7 +104,7 @@ describe("NewBoardPage", () => {
     expect((inputs[0] as HTMLInputElement).value).toBe("My Board");
   });
 
-  it("prefixes name with S{N}- on submit and navigates to /boards/:id", async () => {
+  it("prefixes name with S{N}- on submit and opens daemon handoff modal", async () => {
     await renderPage();
 
     const inputs = screen.getAllByRole("textbox");
@@ -109,6 +116,25 @@ describe("NewBoardPage", () => {
     await waitFor(() => {
       expect(mockGetNextNumber).toHaveBeenCalledOnce();
       expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ name: "S3-UX Polish", type: "dev" }));
+      // Navigation deferred to modal close; modal opens first with "No machine registered"
+      expect(screen.getByText("No machine registered")).toBeTruthy();
+    });
+  });
+
+  it("navigates to /boards/:id after closing the daemon handoff modal", async () => {
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Create Board" }));
+
+    // Wait for modal to open
+    await waitFor(() => {
+      expect(screen.getByText("No machine registered")).toBeTruthy();
+    });
+
+    // Close modal via "Later" button
+    fireEvent.click(screen.getByRole("button", { name: "Later" }));
+
+    await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith("/boards/board-abc", { replace: true });
     });
   });
