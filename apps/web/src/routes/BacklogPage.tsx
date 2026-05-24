@@ -1,14 +1,15 @@
 import type { BacklogItem, BacklogItemPriority } from "@agent-kanban/shared";
 import { BACKLOG_ITEM_PRIORITIES } from "@agent-kanban/shared";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { BacklogItemForm, type BacklogItemFormMode } from "../components/BacklogItemForm";
 import { BacklogPriorityGroup } from "../components/BacklogPriorityGroup";
+import { CreatePlanButton } from "../components/CreatePlanButton";
 import { Header } from "../components/Header";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { Skeleton } from "../components/ui/skeleton";
-import { useBacklogItems, useCreateBacklogItem, useDeleteBacklogItem, useUpdateBacklogItem } from "../hooks/useBacklogItems";
+import { useBacklogItems, useBulkMarkInPlanning, useCreateBacklogItem, useDeleteBacklogItem, useUpdateBacklogItem } from "../hooks/useBacklogItems";
 import { useBoard } from "../hooks/useBoard";
 
 export function BacklogPage() {
@@ -18,6 +19,7 @@ export function BacklogPage() {
   const createItem = useCreateBacklogItem(boardId);
   const updateItem = useUpdateBacklogItem(boardId);
   const deleteItem = useDeleteBacklogItem(boardId);
+  const bulkMarkInPlanning = useBulkMarkInPlanning(boardId);
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<BacklogItemFormMode>("create");
@@ -25,12 +27,15 @@ export function BacklogPage() {
   const [deleteTarget, setDeleteTarget] = useState<BacklogItem | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const grouped = useMemo(() => {
     const map: Record<BacklogItemPriority, BacklogItem[]> = { P0: [], P1: [], P2: [], P3: [] };
     for (const item of items) map[item.priority].push(item);
     return map;
   }, [items]);
+
+  const selectedItems = useMemo(() => items.filter((item) => selectedIds.has(item.id)), [items, selectedIds]);
 
   function openCreate() {
     setFormError(null);
@@ -45,6 +50,18 @@ export function BacklogPage() {
     setEditingItem(item);
     setFormOpen(true);
   }
+
+  const handleSelect = useCallback((item: BacklogItem, selected: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(item.id);
+      } else {
+        next.delete(item.id);
+      }
+      return next;
+    });
+  }, []);
 
   async function handleSubmit(input: { title: string; description: string | null; priority: BacklogItemPriority }) {
     setFormError(null);
@@ -74,6 +91,13 @@ export function BacklogPage() {
     }
   }
 
+  async function handleCreatePlan() {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    await bulkMarkInPlanning.mutateAsync(ids);
+    setSelectedIds(new Set());
+  }
+
   if (boardLoading) return <BacklogLoading />;
   if (!board || !boardId) return <BacklogNotFound />;
 
@@ -89,9 +113,12 @@ export function BacklogPage() {
             <h1 className="mt-1 text-xl font-bold text-content-primary">Backlog</h1>
             <p className="mt-1 text-xs text-content-tertiary">Capture and groom ideas before they become tasks.</p>
           </div>
-          <Button size="sm" onClick={openCreate}>
-            Add backlog item
-          </Button>
+          <div className="flex items-center gap-2">
+            <CreatePlanButton selectedItems={selectedItems} onPlanning={handleCreatePlan} />
+            <Button size="sm" onClick={openCreate}>
+              Add item
+            </Button>
+          </div>
         </div>
 
         {errorMessage && (
@@ -112,6 +139,8 @@ export function BacklogPage() {
                 key={priority}
                 priority={priority}
                 items={grouped[priority]}
+                selectedIds={selectedIds}
+                onSelect={handleSelect}
                 onEdit={openEdit}
                 onDelete={(item) => {
                   setDeleteError(null);

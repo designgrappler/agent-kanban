@@ -4,6 +4,8 @@ import { Button } from "./ui/button";
 
 interface BacklogItemCardProps {
   item: BacklogItem;
+  selected?: boolean;
+  onSelect?: (item: BacklogItem, selected: boolean) => void;
   onEdit: (item: BacklogItem) => void;
   onDelete: (item: BacklogItem) => void;
 }
@@ -33,15 +35,32 @@ function StatusPill({ status }: { status: BacklogItemStatus }) {
   );
 }
 
-export function BacklogItemCard({ item, onEdit, onDelete }: BacklogItemCardProps) {
+export function BacklogItemCard({ item, selected = false, onSelect, onEdit, onDelete }: BacklogItemCardProps) {
   const editable = item.status === "idea";
+  const selectable = item.status === "idea" && !!onSelect;
+
   return (
     <div
       data-testid="backlog-item-card"
       data-item-id={item.id}
-      className="group/item rounded-md border border-border bg-surface-secondary p-3 transition-colors hover:bg-surface-tertiary"
+      data-selected={selected}
+      className={`group/item rounded-md border bg-surface-secondary p-3 transition-colors hover:bg-surface-tertiary ${
+        selected ? "border-accent" : "border-border"
+      }`}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start gap-3">
+        {selectable && (
+          <div className="pt-0.5 shrink-0">
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={(e) => onSelect?.(item, e.target.checked)}
+              aria-label={`Select backlog item ${item.title}`}
+              data-testid="backlog-item-checkbox"
+              className="size-3.5 cursor-pointer accent-accent rounded"
+            />
+          </div>
+        )}
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex items-center gap-2">
             <span className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-content-tertiary">

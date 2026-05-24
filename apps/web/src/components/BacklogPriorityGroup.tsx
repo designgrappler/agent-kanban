@@ -4,6 +4,8 @@ import { BacklogItemCard } from "./BacklogItemCard";
 interface BacklogPriorityGroupProps {
   priority: BacklogItemPriority;
   items: BacklogItem[];
+  selectedIds?: Set<string>;
+  onSelect?: (item: BacklogItem, selected: boolean) => void;
   onEdit: (item: BacklogItem) => void;
   onDelete: (item: BacklogItem) => void;
 }
@@ -15,7 +17,7 @@ const PRIORITY_DESCRIPTIONS: Record<BacklogItemPriority, string> = {
   P3: "Low — nice to have",
 };
 
-export function BacklogPriorityGroup({ priority, items, onEdit, onDelete }: BacklogPriorityGroupProps) {
+export function BacklogPriorityGroup({ priority, items, selectedIds, onSelect, onEdit, onDelete }: BacklogPriorityGroupProps) {
   return (
     <section data-testid="backlog-priority-group" data-priority={priority} aria-label={`Priority ${priority}`} className="space-y-2">
       <header className="flex items-baseline justify-between gap-3 border-b border-border pb-1.5">
@@ -33,7 +35,7 @@ export function BacklogPriorityGroup({ priority, items, onEdit, onDelete }: Back
         <ul className="space-y-2">
           {items.map((item) => (
             <li key={item.id}>
-              <BacklogItemCard item={item} onEdit={onEdit} onDelete={onDelete} />
+              <BacklogItemCard item={item} selected={selectedIds?.has(item.id)} onSelect={onSelect} onEdit={onEdit} onDelete={onDelete} />
             </li>
           ))}
         </ul>

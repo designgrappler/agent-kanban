@@ -210,6 +210,7 @@ export const api = {
     create: (boardId: string, body: CreateBacklogItemInput) => request<BacklogItem>("POST", `/boards/${boardId}/backlog-items`, body),
     update: (id: string, patch: UpdateBacklogItemInput) => request<BacklogItem>("PATCH", `/backlog-items/${id}`, patch),
     delete: (id: string) => request<void>("DELETE", `/backlog-items/${id}`),
+    bulkMarkInPlanning: (ids: string[]) => request<BacklogItem[]>("POST", "/backlog-items/bulk-mark-in-planning", { ids }),
   },
   admin: {
     getStats: () => request<any>("GET", "/admin/stats"),

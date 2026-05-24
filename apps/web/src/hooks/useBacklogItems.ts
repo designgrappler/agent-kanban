@@ -15,6 +15,9 @@ export function useBacklogItems(boardId: string | undefined, opts?: { status?: B
   });
 }
 
+/** Alias used by the Backlog page for clarity. */
+export { useBacklogItems as useBacklogList };
+
 export function useCreateBacklogItem(boardId: string | undefined) {
   const queryClient = useQueryClient();
 
@@ -49,6 +52,19 @@ export function useDeleteBacklogItem(boardId: string | undefined) {
 
   return useMutation({
     mutationFn: (id: string) => api.backlogItems.delete(id),
+    onSuccess: () => {
+      if (boardId) {
+        queryClient.invalidateQueries({ queryKey: ["backlog-items", boardId] });
+      }
+    },
+  });
+}
+
+export function useBulkMarkInPlanning(boardId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: string[]) => api.backlogItems.bulkMarkInPlanning(ids),
     onSuccess: () => {
       if (boardId) {
         queryClient.invalidateQueries({ queryKey: ["backlog-items", boardId] });
